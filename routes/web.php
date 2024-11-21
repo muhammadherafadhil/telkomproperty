@@ -19,5 +19,5 @@ Route::post('/logout', action: [AuthController::class, 'logout'])->name('logout'
 
 // Route protected untuk dashboard
 Route::get('/beranda', function () {
-    return view('welcome');
+    return view('beranda');
 })->name('beranda')->middleware('auth');
