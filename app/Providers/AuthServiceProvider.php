@@ -2,7 +2,12 @@
 
 namespace App\Providers;
 
-// use Illuminate\Support\Facades\Gate;
+use App\Models\Feedback;
+use App\Models\Performance;
+use App\Models\User;
+use App\Policies\FeedbackPolicy;
+use App\Policies\PerformancePolicy;  // Menambahkan policy PerformancePolicy
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -13,7 +18,8 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        //
+        Feedback::class => FeedbackPolicy::class,  // Daftarkan kebijakan untuk model Feedback
+        Performance::class => PerformancePolicy::class,  // Daftarkan kebijakan untuk model Performance
     ];
 
     /**
@@ -21,6 +27,16 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->registerPolicies();
+
+        // Gate untuk memeriksa apakah pengguna adalah admin
+        Gate::define('admin', function (User $user) {
+            return $user->role === 'admin'; // role admin
+        });
+
+        // Daftarkan PerformancePolicy
+        Gate::policy(Performance::class, PerformancePolicy::class);
+
+        // Gate tambahan bisa ditambahkan di sini jika diperlukan
     }
 }

@@ -2,15 +2,13 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -19,8 +17,10 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'nik',       // Nomor Induk Karyawan
-        'password',  // Password user
-        'role',      // Role user (admin/user)
+        'name',      // Nama pengguna
+        'email',     // Email pengguna
+        'password',  // Password pengguna
+        'role',      // Role pengguna (admin/user)
     ];
 
     /**
@@ -43,10 +43,27 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // Menghubungkan User dengan DataPegawai berdasarkan nik
-public function dataPegawai()
-{
-    return $this->hasOne(DataPegawai::class, 'nik', 'nik');
-}
+    /**
+     * Menghubungkan User dengan DataPegawai berdasarkan nik
+     */
+    public function dataPegawai()
+    {
+        return $this->hasOne(DataPegawai::class, 'nik', 'nik');
+    }
 
+    /**
+     * Cek apakah pengguna adalah admin
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'admin';  // Pastikan role pengguna adalah 'admin'
+    }
+
+    /**
+     * Cek apakah pengguna adalah pegawai
+     */
+    public function isEmployee()
+    {
+        return $this->role === 'user'; // Memastikan role pengguna adalah 'user'
+    }
 }

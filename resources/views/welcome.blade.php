@@ -8,8 +8,7 @@
     <title>@yield('title', 'Default Title')</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        /* Global styles */
+n      <style>
         body {
             display: flex;
             min-height: 100vh;
@@ -19,7 +18,6 @@
             overflow-x: hidden;
         }
 
-        /* Sidebar styles */
         .sidebar {
             width: 250px;
             background-color: #343a40;
@@ -44,45 +42,27 @@
             text-align: center;
             background-color: #007bff;
             border-bottom: 2px solid #495057;
-            transition: padding 0.3s ease;
+            height: 20vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
 
         .sidebar-header img {
-            max-width: 50px;
+            max-width: 200%;
             height: auto;
-            margin-bottom: 10px;
-            transition: transform 0.3s ease;
-        }
-
-        /* Hover effect on logo */
-        .sidebar-header img:hover {
-            transform: scale(1.3); /* Memperbesar logo saat dihover */
-            transition: transform 0.3s ease;
-        }
-
-        /* If the sidebar is minimized */
-        .sidebar.minimized .sidebar-header img:hover {
-            transform: scale(1.5); /* Memperbesar logo lebih besar saat sidebar diminimalkan */
-        }
-
-        .sidebar.minimized .sidebar-header {
-            padding: 0.5rem; /* Mengurangi padding agar logo lebih terpusat */
+            display: block;
+            margin: 0 auto;
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
 
         .sidebar.minimized .sidebar-header img {
-            transform: scale(1.2);
-            margin-top: 10px; /* Menambahkan jarak atas untuk memperbaiki posisi logo */
-        }
-
-        .sidebar-header h3,
-        .sidebar-header p {
-            transition: opacity 0.3s ease;
-            opacity: 1;
-        }
-
-        .sidebar.minimized .sidebar-header h3,
-        .sidebar.minimized .sidebar-header p {
             opacity: 0;
+            transform: scale(0.8);
         }
 
         .sidebar-menu {
@@ -121,23 +101,21 @@
             display: none;
         }
 
-        /* Sidebar footer styles */
         .sidebar-footer {
             padding: 1rem;
             text-align: center;
             border-top: 2px solid #495057;
+            transition: opacity 0.3s ease;
         }
 
-        /* Menyembunyikan tombol logout saat sidebar diminimalkan */
         .sidebar.minimized .sidebar-footer {
-            display: none;
+            opacity: 0;
         }
 
-        /* Main content styles */
         .main-content {
             flex-grow: 1;
             margin-left: 250px;
-            padding: 3rem 2rem;
+            /* padding: 3rem 2rem; */
             background-color: #ffffff;
             transition: margin-left 0.3s ease;
         }
@@ -184,27 +162,30 @@
                 margin-left: 0;
             }
         }
+
+        /* Modal Styles */
+        .modal-content {
+            border-radius: 8px;
+        }
+
+        .modal-header {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+        }
     </style>
 </head>
 
 <body>
-    <!-- Toggle Button -->
     <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
-
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div>
             <div class="sidebar-header">
-            <br><br>
-                <!-- <img src="https://via.placeholder.com/50" alt="Logo"> -->
-                <h3>Selamat Datang</h3>
-                <p>
-                    @if(Auth::user()->dataPegawai)
-                        {{ Auth::user()->dataPegawai->nama }}
-                    @else
-                        Anda ({{ Auth::user()->role }})
-                    @endif
-                </p>
+                <img src="{{ asset('telprologo.png') }}" alt="TelPro Logo">
             </div>
             <div class="sidebar-menu">
                 @if(Auth::user() && Auth::user()->role === 'admin')
@@ -219,28 +200,44 @@
                 </a>
                 <a href="{{ route('data-pegawai.index') }}" 
                    class="{{ Request::routeIs('data-pegawai.index') ? 'active' : '' }}">
-                    <i class="bi bi-people"></i><span>Lihat Data Pegawai</span>
+                    <i class="bi bi-people"></i><span>Profil</span>
                 </a>
             </div>
         </div>
         <div class="sidebar-footer">
             @if(Auth::check())
-                <form action="{{ route('logout') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="btn btn-danger">Logout</button>
-                </form>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">Logout</button>
             @else
                 <a href="{{ route('login') }}" class="btn btn-success">Login</a>
             @endif
         </div>
     </div>
 
-    <!-- Main Content -->
+    <!-- Modal Logout -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logoutModalLabel">Konfirmasi Logout</h5>
+                </div>
+                <div class="modal-body">
+                    Apakah Anda yakin ingin keluar dari akun?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <form action="{{ route('logout') }}" method="POST" id="logoutForm">
+                        @csrf
+                        <button type="submit" class="btn btn-danger">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="main-content" id="main-content">
         @yield('content')
     </div>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const sidebar = document.getElementById('sidebar');
