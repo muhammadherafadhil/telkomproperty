@@ -4,15 +4,28 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\DataPegawai;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Provinsi;
 use App\Models\Kabupaten;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
-use Illuminate\Support\Facades\Auth;
-use App\Models\HistoryLog;
+use App\Models\Hobi;
+use App\Models\Keterampilan;
+use App\Models\Pelatihan;
+use App\Models\Pendidikan;
+use App\Models\Penghargaan;
+use App\Models\RiwayatJabatan;
+use App\Models\HistoryLog; // Import the HistoryLog model
 
 class DataPegawaiController extends Controller
 {
+    public function show($nik)
+    {
+        $dataPegawai = DataPegawai::with(['provinsi', 'kabupaten', 'kecamatan', 'kelurahan'])->where('nik', $nik)->first();
+
+        return view('data-pegawai.show', compact('dataPegawai'));
+    }
+
     // Menampilkan data pegawai
     public function index()
     {
@@ -31,8 +44,24 @@ class DataPegawaiController extends Controller
             return redirect()->route('beranda')->with('error', 'Data pegawai tidak ditemukan.');
         }
 
-        // Kirim satu data pegawai ke view
-        return view('data-pegawai.index', compact('dataPegawai'));
+        // Ambil data terkait berdasarkan NIK pengguna yang login
+        $hobi = Hobi::where('nik', $user->nik)->get();
+        $keterampilan = Keterampilan::where('nik', $user->nik)->get();
+        $pelatihan = Pelatihan::where('nik', $user->nik)->get();
+        $pendidikan = Pendidikan::where('nik', $user->nik)->get();
+        $penghargaan = Penghargaan::where('nik', $user->nik)->get();
+        $riwayatJabatan = RiwayatJabatan::where('nik', $user->nik)->get();
+
+        // Kirim semua data ke view
+        return view('data-pegawai.index', compact(
+            'dataPegawai', 
+            'hobi', 
+            'keterampilan', 
+            'pelatihan', 
+            'pendidikan', 
+            'penghargaan', 
+            'riwayatJabatan'
+        ));
     }
 
     // Menampilkan form edit data pegawai
@@ -43,6 +72,9 @@ class DataPegawaiController extends Controller
 
         // Ambil semua data provinsi
         $provinsi = Provinsi::all();
+        $kabupaten = Kabupaten::where('id_prov', $dataPegawai->prov)->get(); // Kabupaten berdasarkan provinsi
+        $kecamatan = Kecamatan::where('id_kab', $dataPegawai->kab_kot)->get(); // Kecamatan berdasarkan kabupaten
+        $kelurahan = Kelurahan::where('id_kec', $dataPegawai->kec)->get(); // Kelurahan berdasarkan kecamatan
 
         // Pastikan hanya admin atau pemilik data yang bisa mengakses halaman ini
         if ($user->role !== 'admin' && $dataPegawai->nik !== $user->nik) {
@@ -60,7 +92,6 @@ class DataPegawaiController extends Controller
         return response()->json($kabupaten);
     }
 
-    // Method untuk mendapatkan kecamatan berdasarkan kabupaten
     public function getKecamatan($id_kab)
     {
         $kecamatan = Kecamatan::where('id_kab', $id_kab)->select('id_kec', 'nama')->get();
@@ -152,6 +183,36 @@ class DataPegawaiController extends Controller
             'nama_bank' => 'nullable|string|max:255',
             'no_rekening' => 'nullable|string|max:50',
             'nama_rekening' => 'nullable|string|max:255',
+            
+            'hobi' => 'nullable|string|max:255',
+            'lamp_kegiatan_hobi' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
+            
+            'pelatihan' => 'nullable|string|max:255',
+            'tanggal_pelatihan' => 'nullable|date|max:255',
+            'tanggal_selesai_pelatihan' => 'nullable|date|max:255',
+            'nama_penyelenggara' => 'nullable|string|max:255',
+            'lamp_pelatihan' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
+
+            'penghargaan' => 'nullable|string|max:255',
+            'tahun_penghargaan' => 'nullable|date|max:255',
+            'nama_penghargaan' => 'nullable|string|max:255',
+            'lamp_penghargaan' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
+
+            'jenjang_pendidikan' => 'nullable|string|max:255',
+            'institusi' => 'nullable|string|max:255',
+            'jurusan' => 'nullable|string|max:255',
+            'tahun_lulus' => 'nullable|string|max:255',
+            'lamp_ijazah' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
+            
+            'nama_jabatan' => 'nullable|string|max:255',
+            'tanggal_menjabat' => 'nullable|date|max:255',
+            'tanggal_akhir_jabatan' => 'nullable|date|max:255',
+            'lokasi_penempatan' => 'nullable|string|max:255',
+            'lamp_jabatan' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
+
+            'keterampilan' => 'nullable|string|max:255',
+            'lamp_keterampilan' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
+            
             'lamp_foto_karyawan' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
             'lamp_ktp' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
             'lamp_sk_kartap' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
@@ -164,9 +225,10 @@ class DataPegawaiController extends Controller
             'lamp_akta_2' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
             'lamp_akta_3' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
             'lamp_bpjs_kes' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg,webp|max:2048',
-            'lamp_bpjs_tk' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg,webp|max:2048',
+            'lamp_bpjs_tk' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpgwebp,webp|max:2048',
             'lamp_kartu_npwp' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
             'lamp_buku_rekening' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
+            
             'avatar_karyawan' => 'nullable|file|mimes:gif,pdf,jpeg,png,jpg|max:2048',
         ]);
 
@@ -189,7 +251,7 @@ class DataPegawaiController extends Controller
             'pendidikan_terakhir' => $request->pendidikan_terakhir,
             'aktif_or_pensiun' => $request->aktif_or_pensiun,
             'nomor_ktp' => $request->nomor_ktp,
-            'alamat' => $dataPegawai->alamat,
+            'alamat' => $request->alamat,
             'rt_rw' => $request->rt_rw,
             'des_kel' => $request->des_kel,
             'kec' => $request->kec,
@@ -238,6 +300,7 @@ class DataPegawaiController extends Controller
             'nama_bank' => $request->nama_bank,
             'no_rekening' => $request->no_rekening,
             'nama_rekening' => $request->nama_rekening,
+            
             'lamp_foto_karyawan' => $request->hasFile('lamp_foto_karyawan') ? $request->lamp_foto_karyawan->storeAs('storage', time() . '_' . $request->lamp_foto_karyawan->getClientOriginalName(), 'public') : $dataPegawai->lamp_foto_karyawan,
             'lamp_ktp' => $request->hasFile('lamp_ktp') ? $request->lamp_ktp->storeAs('storage', time() . '_' . $request->lamp_ktp->getClientOriginalName(), 'public') : $dataPegawai->lamp_ktp,
             'lamp_sk_kartap' => $request->hasFile('lamp_sk_kartap') ? $request->lamp_sk_kartap->storeAs('storage', time() . '_' . $request->lamp_sk_kartap->getClientOriginalName(), 'public') : $dataPegawai->lamp_sk_kartap,
@@ -255,10 +318,16 @@ class DataPegawaiController extends Controller
             'lamp_buku_rekening' => $request->hasFile('lamp_buku_rekening') ? $request->lamp_buku_rekening->storeAs('storage', time() . '_' . $request->lamp_buku_rekening->getClientOriginalName(), 'public') : $dataPegawai->lamp_buku_rekening,
             'avatar_karyawan' => $request->hasFile('avatar_karyawan') ? $request->avatar_karyawan->storeAs('storage', time() . '_' . $request->avatar_karyawan->getClientOriginalName(), 'public') : $dataPegawai->avatar_karyawan,
         ]);
-        
+
         // Proses upload lampiran
         $lampiranFields = [
-            'lamp_foto_karyawan',
+            // 'lamp_keterampilan',
+            // 'lamp_kegiatan_hobi',
+            // 'lamp_jabatan',
+            // 'lamp_pelatihan',
+            // 'lamp_penghargaan',
+            // 'lamp_ijazah',
+            'lamp_foto_karyawan',   
             'lamp_ktp',
             'lamp_sk_kartap',
             'lamp_sk_promut',
@@ -273,57 +342,104 @@ class DataPegawaiController extends Controller
             'lamp_bpjs_tk',
             'lamp_kartu_npwp',
             'lamp_buku_rekening',
+            
             'avatar_karyawan',
         ];
 
-        // Log history
-        $this->logHistory($dataPegawai, 'update');
-
-        return redirect()->route('data-pegawai.index')->with('success', 'Data pegawai berhasil diperbarui!');
-    }
-
-    private function logHistory($dataPegawai, $action)
-    {
-        $changes = $dataPegawai->getChanges(); // Mengambil data yang berubah
-    
-        // Menyimpan log ke tabel history_logs
-        $historyLog = new HistoryLog();
-        $historyLog->data_pegawai_id = $dataPegawai->id;
-        $historyLog->action = $action; // Jenis aksi (create, update, delete)
-    
-        // Jika aksi adalah update, simpan data lama dan baru
-        if ($action === 'update') {
-            $historyLog->old_data = json_encode($dataPegawai->getOriginal()); // Data lama
-            $historyLog->new_data = json_encode($changes); // Data baru
-        } elseif ($action === 'create') {
-            $historyLog->new_data = json_encode($changes); // Data baru (untuk create)
-        } elseif ($action === 'delete') {
-            $historyLog->old_data = json_encode($dataPegawai->getOriginal()); // Data lama (untuk delete)
-        }
-    
-        // Menyimpan lampiran jika ada
-        $oldAttachments = [];
-        $newAttachments = [];
-        
-        // Cek lampiran lama
-        if ($action === 'update') {
-            $oldData = $dataPegawai->getOriginal();
-            foreach ($oldData as $key => $value) {
-                if (strpos($key, 'lamp_') === 0 && !empty($value)) {
-                    $oldAttachments[$key] = $value; // Menyimpan lampiran lama
-                }
-            }
-            $historyLog->old_attachments = json_encode($oldAttachments); // Simpan lampiran lama
-        }
-    
-        // Cek lampiran baru
-        foreach ($changes as $key => $value) {
-            if (strpos($key, 'lamp_') === 0 && !empty($value)) {
-                $newAttachments[$key] = $value; // Menyimpan lampiran baru
+foreach ($lampiranFields as $field) {
+    // Cek apakah ada file yang diunggah
+    if ($request->hasFile($field)) {
+        // Hapus file lama jika ada
+        if ($dataPegawai->$field) {
+            $oldFilePath = storage_path('app/public/storage' . $dataPegawai->$field);
+            if (file_exists($oldFilePath)) {
+                unlink($oldFilePath); // Hapus file lama
             }
         }
-        $historyLog->new_attachments = json_encode($newAttachments); // Simpan lampiran baru
-    
-        $historyLog->save(); // Simpan log ke database
+
+        // Ambil file yang diupload
+        $file = $request->file($field);
+
+        // Tentukan nama file unik
+        $filename = time() . '_' . $file->getClientOriginalName();
+
+        // Simpan file di folder 'public' dalam storage
+        $path = $file->storeAs('public/storage', $filename);
+
+        // Update path di database untuk file yang diupload
+        $dataPegawai->$field = 'storage/' . $filename;
+    } else {
+        // Jika tidak ada file yang diupload, biarkan path yang lama tetap ada
+        // Jadi foto karyawan dan file lainnya yang tidak diubah akan tetap ada
+        $dataPegawai->$field = $dataPegawai->$field ?? $dataPegawai->$field;
     }
+}
+
+     // Log history
+     $this->logHistory($dataPegawai, 'update');
+
+     return redirect()->route('data-pegawai.index')->with('success', 'Data pegawai berhasil diperbarui!');
+ }
+
+ // Fungsi untuk menyimpan log history
+ private function logHistory($dataPegawai, $action)
+ {
+     $changes = $dataPegawai->getChanges(); // Mengambil data yang berubah
+
+     // Menyimpan log ke tabel history_logs
+     $historyLog = new HistoryLog();
+     $historyLog->data_pegawai_id = $dataPegawai->id;
+     $historyLog->action = $action; // Jenis aksi (create, update, delete)
+
+     // Jika aksi adalah update, simpan data lama dan baru
+     if ($action === 'update') {
+         $historyLog->old_data = json_encode($dataPegawai->getOriginal()); // Data lama
+         $historyLog->new_data = json_encode($changes); // Data baru
+     } elseif ($action === 'create') {
+         $historyLog->new_data = json_encode($changes); // Data baru (untuk create)
+     } elseif ($action === 'delete') {
+         $historyLog->old_data = json_encode($dataPegawai->getOriginal()); // Data lama (untuk delete)
+     }
+
+     // Menyimpan lampiran jika ada
+     $oldAttachments = [];
+     $newAttachments = [];
+     
+     // Cek lampiran lama
+     if ($action === 'update') {
+         $oldData = $dataPegawai->getOriginal();
+         foreach ($oldData as $key => $value) {
+             if (strpos($key, 'lamp_') === 0 && !empty($value)) {
+                 $oldAttachments[$key] = $value; // Menyimpan lampiran lama
+             }
+         }
+         $historyLog->old_attachments = json_encode($oldAttachments); // Simpan lampiran lama
+     }
+
+     // Cek lampiran baru
+     foreach ($changes as $key => $value) {
+         if (strpos($key, 'lamp_') === 0 && !empty($value)) {
+             $newAttachments[$key] = $value; // Menyimpan lampiran baru
+         }
+     }
+     $historyLog->new_attachments = json_encode($newAttachments); // Simpan lampiran baru
+
+     // Menyimpan hobi sebagai lampiran
+     $hobi = Hobi::find($dataPegawai->hobi_id); // Ambil hobi terkait
+     if ($hobi) {
+         $historyLog->new_attachments = json_encode(array_merge($newAttachments, ['hobi' => $hobi->name])); // Tambahkan hobi ke lampiran baru
+     }
+
+     $historyLog->save(); // Simpan log ke database
+ }
+
+ // Fungsi untuk menampilkan history logs di halaman beranda
+ public function showHistoryLogs()
+ {
+     $logs = HistoryLog::with('dataPegawai') // Memuat relasi data pegawai
+         ->orderBy('created_at', 'desc')
+         ->paginate(10); // Ambil log dengan paginasi
+     
+     return view('beranda', compact('logs')); // Mengirimkan log ke halaman beranda
+ }
 }

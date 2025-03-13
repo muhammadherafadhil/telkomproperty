@@ -95,14 +95,15 @@ return new class extends Migration
             $table->text('lamp_bpjs_tk')->nullable();
             $table->text('lamp_kartu_npwp')->nullable();
             $table->text('lamp_buku_rekening')->nullable();
-            $table->string('avatar_karyawan', 255)->nullable();
-            $table->timestamps();
+            $table->text('lamp_prestasi')->nullable();
+            $table->text('avatar_karyawan')->nullable();
+            $table->timestamps(); 
         });
     }
 
     /**
      * Reverse the migrations.
-     */
+     */     
     public function down(): void
     {
         Schema::dropIfExists('data_pegawais');

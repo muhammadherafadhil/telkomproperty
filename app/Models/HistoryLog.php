@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class HistoryLog extends Model
 {
@@ -22,8 +24,13 @@ class HistoryLog extends Model
         'validation_status',
         'validated_by',
         'validated_at',
-        'lampiran', // Tambahkan kolom lampiran jika diperlukan
-        'attachments', // Pastikan kolom ini ada
+        'lampiran', // Menyimpan lampiran (file)
+        'hobi_id', // Menyimpan ID hobi
+        'keterampilan_id', // Menyimpan ID keterampilan
+        'pelatihan_id', // Menyimpan ID pelatihan
+        'pendidikan_id', // Menyimpan ID pendidikan
+        'penghargaan_id', // Menyimpan ID penghargaan
+        'jabatan_id', // Menyimpan ID jabatan
     ];
 
     /**
@@ -80,9 +87,36 @@ class HistoryLog extends Model
     }
 
     /**
+     * Relasi dengan model Hobi
+     * Setiap HistoryLog berhubungan dengan satu Hobi
+     */
+    public function hobi()
+    {
+        return $this->belongsTo(Hobi::class, 'hobi_id');
+    }
+
+    /**
+     * Relasi dengan model Pelatihan
+     * Setiap HistoryLog berhubungan dengan satu Pelatihan
+     */
+    public function pelatihan()
+    {
+        return $this->belongsTo(Pelatihan::class, 'pelatihan_id', 'id'); // 'pelatihan_id' adalah foreign key dalam tabel history_logs
+    }
+
+    /**
+     * Relasi dengan model Penghargaan
+     * Setiap HistoryLog berhubungan dengan satu Penghargaan
+     */
+    public function penghargaan()
+    {
+        return $this->belongsTo(Penghargaan::class, 'penghargaan_id');
+    }
+
+    /**
      * Metode untuk mencatat log perubahan data pegawai
      */
-    public static function recordLog($pegawai, $oldData, $newData, $userId)
+    public static function recordLog($pegawai, $oldData, $newData, $userId, $hobiId = null, $keterampilanId = null, $pelatihanId = null, $pendidikanId = null, $penghargaanId = null, $jabatanId = null)
     {
         $changes = [];
         foreach ($oldData as $key => $value) {
@@ -104,27 +138,66 @@ class HistoryLog extends Model
             'validated_by' => null,
             'validated_at' => null,
             'lampiran' => $pegawai->photo, // Menyimpan foto pegawai sebagai lampiran
+            'hobi_id' => $hobiId, // Menyimpan ID hobi jika ada
+            'keterampilan_id' => $keterampilanId, // Menyimpan ID keterampilan jika ada
+            'pelatihan_id' => $pelatihanId, // Menyimpan ID pelatihan jika ada
+            'pendidikan_id' => $pendidikanId, // Menyimpan ID pendidikan jika ada
+            'penghargaan_id' => $penghargaanId, // Menyimpan ID penghargaan jika ada
+            'jabatan_id' => $jabatanId, // Menyimpan ID jabatan jika ada
         ]);
     }
 
     /**
-     * Metode untuk validasi log oleh admin
-     * @param int $logId - ID dari HistoryLog yang akan divalidasi
-     * @param string $status - Status validasi ('approved' atau 'rejected')
-     * @param int $adminId - ID admin yang melakukan validasi
-     * @return bool
+     * Metode untuk mencatat perubahan data dalam HistoryLog
      */
-    public static function validateLog($logId, $status, $adminId)
+    public function storeLog($dataPegawaiId, $action, $oldData, $newData, $request, $hobiId = null, $keterampilanId = null, $pelatihanId = null, $pendidikanId = null, $penghargaanId = null, $jabatanId = null)
     {
-        $log = self::find($logId);
-        if (!$log || !in_array($status, ['approved', 'rejected'])) {
-            return false;
+        $dataPegawai = DataPegawai::find($dataPegawaiId);
+        if (!$dataPegawai) {
+            return redirect()->back()->with('error', 'Data pegawai tidak ditemukan');
         }
 
-        return $log->update([
-            'validation_status' => $status,
-            'validated_by' => $adminId,
-            'validated_at' => now(),
+        // Handle foto karyawan atau file lainnya
+        $attachedFiles = [];
+        $attachmentFields = ['lampiran', 'hobi', 'keterampilan', 'pelatihan', 'pendidikan', 'penghargaan', 'jabatan'];
+
+        foreach ($attachmentFields as $field) {
+            if ($request->hasFile($field)) {
+                $file = $request->file($field);
+                $fileName = Str::random(40) . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('public/lampiran', $fileName); // Menyimpan file di storage
+
+                // Menyimpan URL file untuk ditampilkan
+                $attachedFiles[$field] = Storage::url($path);
+            }
+        }
+
+        // Jika ada lampiran, tambahkan ke data baru
+        $newDataWithAttachments = array_merge($newData, $attachedFiles);
+
+        // Cek perubahan pada data
+        $changes = [];
+        foreach ($oldData as $key => $value) {
+            if (isset($newDataWithAttachments[$key]) && $value != $newDataWithAttachments[$key]) {
+                $changes[] = "$key berubah dari $value menjadi {$newDataWithAttachments[$key]}";
+            }
+        }
+        $changeDescription = implode(', ', $changes);
+
+        HistoryLog::create([
+            'data_pegawai_id' => $dataPegawaiId,
+            'action' => $action,
+            'old_data' => json_encode($oldData),
+            'new_data' => json_encode($newDataWithAttachments), // Menyimpan data baru dengan lampiran
+            'name' => $changeDescription,
+            'user_id' => auth()->user()->id,
+            'lampiran' => $attachedFiles['lampiran'] ?? null, // Menyimpan file lampiran utama jika ada
+            'hobi_id' => $hobiId, // Menyimpan ID hobi jika ada
+            'keterampilan_id' => $keterampilanId, // Menyimpan ID keterampilan jika ada
+            'pelatihan_id' => $pelatihanId, // Menyimpan ID pelatihan jika ada
+            'pendidikan_id' => $pendidikanId, // Menyimpan ID pendidikan jika ada
+            'penghargaan_id' => $penghargaanId, // Menyimpan ID penghargaan jika ada
+            'jabatan_id' => $jabatanId, // Menyimpan ID jabatan jika ada
         ]);
     }
 }

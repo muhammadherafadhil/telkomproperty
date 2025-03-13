@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 class CreateHistoryLogsTable extends Migration
 {
     /**
-     * Jalankan migrasi untuk membuat tabel history_logs dan menambahkan kolom user_id.
+     * Jalankan migrasi untuk membuat tabel history_logs dan menambahkan kolom user_id serta atribut lainnya.
      *
      * @return void
      */
@@ -15,6 +15,9 @@ class CreateHistoryLogsTable extends Migration
     {
         Schema::create('history_logs', function (Blueprint $table) {
             $table->id(); // Kolom ID unik untuk setiap log
+
+            // Menambahkan foreign key pendidikan_id yang mengarah ke tabel pendidikan (bisa disesuaikan jika tabel berbeda)
+            $table->foreignId('pendidikan_id')->nullable()->constrained();
 
             // Menambahkan foreign key data_pegawai_id yang mengarah ke tabel data_pegawais
             $table->foreignId('data_pegawai_id')
@@ -30,9 +33,11 @@ class CreateHistoryLogsTable extends Migration
             // Menyimpan data baru setelah perubahan
             $table->json('new_data')->nullable(); // Kolom untuk menyimpan data baru
 
-            $table->text('old_attachments')->nullable(); // Lampiran lama
+            // Menyimpan lampiran lama
+            $table->text('old_attachments')->nullable(); 
             
-            $table->text('new_attachments')->nullable(); // Lampiran baru
+            // Menyimpan lampiran baru
+            $table->text('new_attachments')->nullable();
 
             // Nama perubahan yang dilakukan dengan keterangan detail
             $table->text('name')->nullable()->comment('Deskripsi perubahan yang dilakukan, seperti: "User A mengubah NIK pegawai dari X ke Y"');
@@ -40,7 +45,12 @@ class CreateHistoryLogsTable extends Migration
             // Menambahkan kolom untuk menyimpan informasi pengguna yang melakukan perubahan
             $table->unsignedBigInteger('user_id')->nullable(); // Menyimpan ID user yang melakukan perubahan
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');  // Menghubungkan ke tabel users
-            
+
+            // Menambahkan kolom validasi log oleh admin
+            $table->string('validation_status')->default('pending'); // Status validasi
+            $table->foreignId('validated_by')->nullable()->constrained('users'); // ID pengguna yang memvalidasi
+            $table->timestamp('validated_at')->nullable(); // Waktu validasi log
+
             // Kolom waktu untuk mencatat kapan perubahan dilakukan
             $table->timestamps(); // Menyimpan waktu perubahan dengan created_at dan updated_at
         });
@@ -53,10 +63,12 @@ class CreateHistoryLogsTable extends Migration
      */
     public function down(): void
     {
-        // Menghapus foreign key dan kolom user_id sebelum menghapus tabel
+        // Menghapus foreign key dan kolom user_id serta validated_by sebelum menghapus tabel
         Schema::table('history_logs', function (Blueprint $table) {
             $table->dropForeign(['user_id']); // Menghapus constraint foreign key
+            $table->dropForeign(['validated_by']); // Menghapus constraint foreign key
             $table->dropColumn('user_id'); // Menghapus kolom user_id
+            $table->dropColumn('validated_by'); // Menghapus kolom validated_by
         });
 
         // Menghapus tabel history_logs

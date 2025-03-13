@@ -8,7 +8,7 @@
         <div class="col-lg-10 col-md-12">
             <div class="card shadow-lg rounded">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Edit Data Pegawai</h3>
+                    <h3 class="mb-0">Tambah atau Edit Data Pegawai Anda!</h3>
                 </div>
 
                 <div class="card-body">
@@ -18,10 +18,15 @@
 
                         <!-- Field 1: Nama Posisi -->
                         <div class="mb-4">
+                            <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
+                            <input type="text" class="form-control" name="nama_lengkap" value="{{ old('nama_lengkap', $dataPegawai->nama_lengkap) }}" >
+                        </div>
+
+                        <!-- Field 8: nama_lengkap -->
+                        <div class="mb-4">
                             <label for="nama_posisi" class="form-label">Nama Posisi</label>
                             <input type="text" class="form-control" name="nama_posisi" value="{{ old('nama_posisi', $dataPegawai->nama_posisi) }}" >
                         </div>
-
                         <!-- Field 3: klasifikasi_posisi -->
                         <div class="mb-4">
                             <label for="klasifikasi_posisi" class="form-label">Klasifikasi Posisi</label>
@@ -50,12 +55,6 @@
                         <div class="mb-4">
                             <label for="nik_tg" class="form-label">NIK TG</label>
                             <input type="text" class="form-control" name="nik_tg" value="{{ old('nik_tg', $dataPegawai->nik_tg) }}" >
-                        </div>
-
-                        <!-- Field 8: nama_lengkap -->
-                        <div class="mb-4">
-                            <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
-                            <input type="text" class="form-control" name="nama_lengkap" value="{{ old('nama_lengkap', $dataPegawai->nama_lengkap) }}" >
                         </div>
 
                         <!-- Field 9: level_eksis -->
@@ -176,10 +175,11 @@
                         <!-- Provinsi -->
                         <div class="mb-4">
                             <label for="prov" class="form-label">Provinsi</label>
-                            <select id="prov" class="form-control" name="prov" value="{{ old('prov', $dataPegawai->id_prov) }}" onchange="getKabupaten(this.value)">
+                            <select id="prov" class="form-control" name="prov" onchange="getKabupaten(this.value)">
                                 <option value="">Pilih Provinsi</option>
                                 @foreach ($provinsi as $prov)
-                                    <option value="{{ $prov->id_prov }}" {{ old('prov') == $prov->id_prov ? 'selected' : '' }}>
+                                    <option value="{{ $prov->id_prov }}" 
+                                        {{ old('prov', $dataPegawai->id_prov) == $prov->id_prov ? 'selected' : '' }}>
                                         {{ $prov->nama }}
                                     </option>
                                 @endforeach
@@ -190,10 +190,9 @@
                             <label for="kab_kot" class="form-label">Kabupaten/Kota</label>
                             <select id="kab_kot" class="form-control" name="kab_kot" onchange="getKecamatan(this.value)">
                                 <option value="">Pilih Kabupaten/Kota</option>
-                                <!-- Saat validasi gagal, pilih opsi yang sesuai dengan old('kab_kot') -->
-                                @if (old('kab_kot'))
-                                    <option value="{{ old('kab_kot') }}" selected>
-                                        {{ old('kab_kot') }}
+                                @if (old('kab_kot', $dataPegawai->id_kab))
+                                    <option value="{{ old('kab_kot', $dataPegawai->id_kab) }}" selected>
+                                        {{ $kabupatenNama ?? '' }}
                                     </option>
                                 @endif
                             </select>
@@ -203,10 +202,9 @@
                             <label for="kec" class="form-label">Kecamatan</label>
                             <select id="kec" class="form-control" name="kec" onchange="getKelurahan(this.value)">
                                 <option value="">Pilih Kecamatan</option>
-                                <!-- Saat validasi gagal, pilih opsi yang sesuai dengan old('kec') -->
-                                @if (old('kec'))
-                                    <option value="{{ old('kec') }}" selected>
-                                        {{ old('kec') }}
+                                @if (old('kec', $dataPegawai->id_kec))
+                                    <option value="{{ old('kec', $dataPegawai->id_kec) }}" selected>
+                                        {{ $kecamatanNama ?? '' }}
                                     </option>
                                 @endif
                             </select>
@@ -216,10 +214,9 @@
                             <label for="des_kel" class="form-label">Desa/Kelurahan</label>
                             <select id="des_kel" class="form-control" name="des_kel">
                                 <option value="">Pilih Desa/Kelurahan</option>
-                                <!-- Saat validasi gagal, pilih opsi yang sesuai dengan old('des_kel') -->
-                                @if (old('des_kel'))
-                                    <option value="{{ old('des_kel') }}" selected>
-                                        {{ old('des_kel') }}
+                                @if (old('des_kel', $dataPegawai->id_kel))
+                                    <option value="{{ old('des_kel', $dataPegawai->id_kel) }}" selected>
+                                        {{ $kelurahanNama ?? '' }}
                                     </option>
                                 @endif
                             </select>
@@ -379,100 +376,100 @@
                         
                                     <!-- Field 46: status_nikah -->
                                     <div class="mb-4">
-    <label for="status_nikah" class="form-label">Status Nikah</label>
-    <select class="form-control" name="status_nikah" id="status_nikah" onchange="toggleFields()">
-        <option value="belum_nikah" {{ old('status_nikah', $dataPegawai->status_nikah) == 'belum_nikah' ? 'selected' : '' }}>Belum Nikah</option>
-        <option value="nikah" {{ old('status_nikah', $dataPegawai->status_nikah) == 'nikah' ? 'selected' : '' }}>Nikah</option>
-        <option value="cerai" {{ old('status_nikah', $dataPegawai->status_nikah) == 'cerai' ? 'selected' : '' }}>Cerai</option>
-    </select>
-</div>
+                                        <label for="status_nikah" class="form-label">Status Nikah</label>
+                                        <select class="form-control" name="status_nikah" id="status_nikah" onchange="toggleFields()">
+                                            <option value="belum_nikah" {{ old('status_nikah', $dataPegawai->status_nikah) == 'belum_nikah' ? 'selected' : '' }}>Belum Nikah</option>
+                                            <option value="nikah" {{ old('status_nikah', $dataPegawai->status_nikah) == 'nikah' ? 'selected' : '' }}>Nikah</option>
+                                            <option value="cerai" {{ old('status_nikah', $dataPegawai->status_nikah) == 'cerai' ? 'selected' : '' }}>Cerai</option>
+                                        </select>
+                                    </div>
 
-<div id="married-fields" style="display: none;">
-    <div class="mb-4">
-        <label for="tanggal_nikah" class="form-label">Tanggal Nikah</label>
-        <input type="date" class="form-control" name="tanggal_nikah" value="{{ old('tanggal_nikah', $dataPegawai->tanggal_nikah) }}">
-    </div>
-    <div class="mb-4">
-        <label for="nama_suami_or_istri" class="form-label">Nama Suami/Istri</label>
-        <input type="text" class="form-control" name="nama_suami_or_istri" value="{{ old('nama_suami_or_istri', $dataPegawai->nama_suami_or_istri) }}">
-    </div>
-    <div class="mb-4">
-        <label for="nomor_hp_pasangan" class="form-label">Nomor HP Pasangan</label>
-        <input type="text" class="form-control" name="nomor_hp_pasangan" value="{{ old('nomor_hp_pasangan', $dataPegawai->nomor_hp_pasangan) }}">
-    </div>
-    <div class="mb-4">
-        <label for="lamp_buku_nikah" class="form-label">Lampirkan Buku Nikah</label>
-        <input type="file" class="form-control" name="lamp_buku_nikah">
-    </div>
-</div>
+                                    <div id="married-fields" style="display: none;">
+                                        <div class="mb-4">
+                                            <label for="tanggal_nikah" class="form-label">Tanggal Nikah</label>
+                                            <input type="date" class="form-control" name="tanggal_nikah" value="{{ old('tanggal_nikah', $dataPegawai->tanggal_nikah) }}">
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="nama_suami_or_istri" class="form-label">Nama Suami/Istri</label>
+                                            <input type="text" class="form-control" name="nama_suami_or_istri" value="{{ old('nama_suami_or_istri', $dataPegawai->nama_suami_or_istri) }}">
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="nomor_hp_pasangan" class="form-label">Nomor HP Pasangan</label>
+                                            <input type="text" class="form-control" name="nomor_hp_pasangan" value="{{ old('nomor_hp_pasangan', $dataPegawai->nomor_hp_pasangan) }}">
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="lamp_buku_nikah" class="form-label">Lampirkan Buku Nikah</label>
+                                            <input type="file" class="form-control" name="lamp_buku_nikah">
+                                        </div>
+                                    </div>
 
 <!-- Field for Children -->
-<div id="children-fields" style="display: none;">
-    <div class="mb-4">
-        <label for="nama_anak_1" class="form-label">Nama Anak 1</label>
-        <input type="text" class="form-control" id="nama_anak_1" name="nama_anak_1" oninput="toggleChildFields()" placeholder="Kosongkan jika tidak ada" value="{{ old('nama_anak_1', $dataPegawai->nama_anak_1) }}">
-    </div>
-    <div id="child-1-fields" style="display: none;">
-        <div class="mb-4">
-            <label for="tanggal_lahir_anak_1" class="form-label">Tanggal Lahir Anak 1</label>
-            <input type="date" class="form-control" name="tgl_lahir_anak_1" value="{{ old('tgl_lahir_anak_1', $dataPegawai->tgl_lahir_anak_1) }}">
-        </div>
-    </div>
-    <div id="lamp-akta-fields" style="display: none;">
-    <div id="lamp-akta-1-field" style="display: none;">
-        <div class="mb-4">
-            <label for="lamp_akta_1" class="form-label">Lampirkan Akta Anak 1</label>
-            <input type="file" class="form-control" name="lamp_akta_1" >
-        </div>
-    </div>
- 
-    <div class="mb-4">
-        <label for="nama_anak_2" class="form-label">Nama Anak 2</label>
-        <input type="text" class="form-control" id="nama_anak_2" name="nama_anak_2" oninput="toggleChildFields()" placeholder="Kosongkan jika tidak ada" value="{{ old('nama_anak_2', $dataPegawai->nama_anak_2) }}">
-    </div>
-    <div id="child-2-fields" style="display: none;">
-        <div class="mb-4">
-            <label for="tanggal_lahir_anak_2" class="form-label">Tanggal Lahir Anak 2</label>
-            <input type="date" class="form-control" name="tgl_lahir_anak_2" value="{{ old('tgl_lahir_anak_2', $dataPegawai->tgl_lahir_anak_2) }}">
-        </div>
-    </div>
-    <div id="lamp-akta-2-field" style="display: none;">
-        <div class="mb-4">
-            <label for="lamp_akta_2" class="form-label">Lampirkan Akta Anak 2</label>
-            <input type="file" class="form-control" name="lamp_akta_2">
-        </div>
-    </div>
+                                    <div id="children-fields" style="display: none;">
+                                        <div class="mb-4">
+                                            <label for="nama_anak_1" class="form-label">Nama Anak 1</label>
+                                            <input type="text" class="form-control" id="nama_anak_1" name="nama_anak_1" oninput="toggleChildFields()" placeholder="Kosongkan jika tidak ada" value="{{ old('nama_anak_1', $dataPegawai->nama_anak_1) }}">
+                                        </div>
+                                        <div id="child-1-fields" style="display: none;">
+                                            <div class="mb-4">
+                                                <label for="tanggal_lahir_anak_1" class="form-label">Tanggal Lahir Anak 1</label>
+                                                <input type="date" class="form-control" name="tgl_lahir_anak_1" value="{{ old('tgl_lahir_anak_1', $dataPegawai->tgl_lahir_anak_1) }}">
+                                            </div>
+                                        </div>
+                                        <div id="lamp-akta-fields" style="display: none;">
+                                        <div id="lamp-akta-1-field" style="display: none;">
+                                            <div class="mb-4">
+                                                <label for="lamp_akta_1" class="form-label">Lampirkan Akta Anak 1</label>
+                                                <input type="file" class="form-control" name="lamp_akta_1" >
+                                            </div>
+                                        </div>
+                                    
+                                        <div class="mb-4">
+                                            <label for="nama_anak_2" class="form-label">Nama Anak 2</label>
+                                            <input type="text" class="form-control" id="nama_anak_2" name="nama_anak_2" oninput="toggleChildFields()" placeholder="Kosongkan jika tidak ada" value="{{ old('nama_anak_2', $dataPegawai->nama_anak_2) }}">
+                                        </div>
+                                        <div id="child-2-fields" style="display: none;">
+                                            <div class="mb-4">
+                                                <label for="tanggal_lahir_anak_2" class="form-label">Tanggal Lahir Anak 2</label>
+                                                <input type="date" class="form-control" name="tgl_lahir_anak_2" value="{{ old('tgl_lahir_anak_2', $dataPegawai->tgl_lahir_anak_2) }}">
+                                            </div>
+                                        </div>
+                                        <div id="lamp-akta-2-field" style="display: none;">
+                                            <div class="mb-4">
+                                                <label for="lamp_akta_2" class="form-label">Lampirkan Akta Anak 2</label>
+                                                <input type="file" class="form-control" name="lamp_akta_2">
+                                            </div>
+                                        </div>
 
-    <div class="mb-4">
-        <label for="nama_anak_3" class="form-label">Nama Anak 3</label>
-        <input type="text" class="form-control" id="nama_anak_3" name="nama_anak_3" oninput="toggleChildFields()" placeholder="Kosongkan jika tidak ada" value="{{ old('nama_anak_3', $dataPegawai->nama_anak_3) }}">
-    </div>
-    <div id="child-3-fields" style="display: none;">
-        <div class="mb-4">
-            <label for="tanggal_lahir_anak_3" class="form-label">Tanggal Lahir Anak 3</label>
-            <input type="date" class="form-control" name="tgl_lahir_anak_3" value="{{ old('tgl_lahir_anak_3', $dataPegawai->tgl_lahir_anak_3) }}">
-        </div>
-    </div>
-    <div id="lamp-akta-3-field" style="display: none;">
-            <div class="mb-4">
-                <label for="lamp_akta_3" class="form-label">Lampirkan Akta Anak 3</label>
-                <input type="file" class="form-control" name="lamp_akta_3">
-            </div>
-        </div>
-    </div>
-</div>
-<!-- Lampiran KTP Pasangan -->
-<div class="mb-4" id="lamp_ktp_pasangan_field" style="display: none;">
-    <label for="lamp_ktp_pasangan" class="form-label">Lampirkan KTP Pasangan</label>
-    <input type="file" class="form-control" name="lamp_ktp_pasangan">
-</div>
+                                        <div class="mb-4">
+                                            <label for="nama_anak_3" class="form-label">Nama Anak 3</label>
+                                            <input type="text" class="form-control" id="nama_anak_3" name="nama_anak_3" oninput="toggleChildFields()" placeholder="Kosongkan jika tidak ada" value="{{ old('nama_anak_3', $dataPegawai->nama_anak_3) }}">
+                                        </div>
+                                        <div id="child-3-fields" style="display: none;">
+                                            <div class="mb-4">
+                                                <label for="tanggal_lahir_anak_3" class="form-label">Tanggal Lahir Anak 3</label>
+                                                <input type="date" class="form-control" name="tgl_lahir_anak_3" value="{{ old('tgl_lahir_anak_3', $dataPegawai->tgl_lahir_anak_3) }}">
+                                            </div>
+                                        </div>
+                                        <div id="lamp-akta-3-field" style="display: none;">
+                                                <div class="mb-4">
+                                                    <label for="lamp_akta_3" class="form-label">Lampirkan Akta Anak 3</label>
+                                                    <input type="file" class="form-control" name="lamp_akta_3">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Lampiran KTP Pasangan -->
+                                    <div class="mb-4" id="lamp_ktp_pasangan_field" style="display: none;">
+                                        <label for="lamp_ktp_pasangan" class="form-label">Lampirkan KTP Pasangan</label>
+                                        <input type="file" class="form-control" name="lamp_ktp_pasangan">
+                                    </div>
 
-<div id="lamp-ktp-pasangan-field" style="display: none;">
-    <div class="mb-4">
-        <label for="lamp_ktp_pasangan" class="form-label">Lampirkan KTP Pasangan</label>
-        <input type="file" class="form-control" name="lamp_ktp_pasangan">
-    </div>
-</div>
+                                    <div id="lamp-ktp-pasangan-field" style="display: none;">
+                                        <div class="mb-4">
+                                            <label for="lamp_ktp_pasangan" class="form-label">Lampirkan KTP Pasangan</label>
+                                            <input type="file" class="form-control" name="lamp_ktp_pasangan">
+                                        </div>
+                                    </div>
                                     <!-- Field 47: tanggal_nikah -->
                                     
                         
@@ -571,7 +568,7 @@
                                     <!-- Field 64: nama_bank -->
                                     <div class="mb-4">
     <label for="no_rekening" class="form-label">Nomor Rekening</label>
-    <input type="text" class="form-control" name="no_rekening" id="no_rekening" oninput="toggleBankFields()" value="{{ old('npwp', $dataPegawai->no_rekening) }}">
+    <input type="text" class="form-control" name="no_rekening" id="no_rekening" oninput="toggleBankFields()" value="{{ old('no_rekening', $dataPegawai->no_rekening) }}">
     <!-- Note about minimum length -->
     <small id="no_rekening_note" class="form-text text-muted" style="display: none;">Nomor Rekening minimal 10 digit</small>
 </div>
@@ -579,7 +576,7 @@
 <div class="mb-4" id="nama_bank_field" style="display: none;">
     <label for="nama_bank" class="form-label">Nama Bank</label>
     <select class="form-control" name="nama_bank" id="nama_bank" oninput="toggleBankFields()">
-        <option value="{{ old('npwp', $dataPegawai->nama_bank) }}">Pilih Nama Bank</option>
+        <option value="{{ old('nama_bank', $dataPegawai->nama_bank) }}">Pilih Nama Bank</option>
         <option value="Bank Mandiri">Bank Mandiri</option>
         <option value="Bank Negara Indonesia">Bank Negara Indonesia (BNI)</option>
         <option value="Bank Rakyat Indonesia">Bank Rakyat Indonesia (BRI)</option>
@@ -610,34 +607,13 @@
     <input type="text" class="form-control" name="nama_rekening" id="nama_rekening" oninput="toggleBankFields()">
 </div>
 
-<div class="mb-4" id="lamp_buku_rekening_field" style="display: none;">
+<div class="mb-4" id="lamp_buku_rekening_field">
     <label for="lamp_buku_rekening" class="form-label">Lampirkan Buku Rekening</label>
     <input type="file" class="form-control" name="lamp_buku_rekening">
 </div>
-                        
-                                    <!-- Field 67: lamp_buku_nikah -->
-                                    
-                                    <!-- Field 68: lamp_kk -->
-                        
-                                    <!-- Field 75: lamp_kartu_npwp -->
-                                    
-                                    <!-- Field 76: lamp_buku_rekening -->
-                                    
-                                    <!-- Field 77: avatar_karyawan -->
-                                    
-                                    <!-- Field 78: lamp_ktp -->
-                                    
-                                    <!-- Field 79: lamp_sk_kartap -->
-
-                                    <!-- Field 80: lamp_sk_promut -->
-                                    
-
-                                    <!-- Field 81: lamp_kontrak -->
-                                    
-
                         <div class="d-flex justify-content-between mt-4">
-                            <button type="submit" class="btn btn-success">Simpan Perubahan</button>
-                            <a href="{{ route('data-pegawai.index') }}" class="btn btn-secondary">Batal</a>
+                            <button type="submit" class="btn btn-success"><i class="bi bi-pencil-square"></i>   Simpan Perubahan</button>
+                            <a href="{{ route('data-pegawai.index') }}" class="btn btn-secondary"><i class="bi bi-arrow-down"></i> Batal</a>
                         </div>
                     </form>
                 </div>
@@ -652,7 +628,7 @@ function getKabupaten(id_prov) {
     kabupatenDropdown.innerHTML = '<option value="">Memuat...</option>'; // Tampilkan status loading
 
     if (id_prov) {
-        fetch(/location/kabupaten/${id_prov})
+        fetch(`/location/kabupaten/${id_prov}`)
             .then(response => response.json())
             .then(data => {
                 kabupatenDropdown.innerHTML = '<option value="">Pilih Kabupaten/Kota</option>';
@@ -678,7 +654,7 @@ function getKecamatan(id_kab) {
     kecamatanDropdown.innerHTML = '<option value="">Memuat...</option>'; // Tampilkan status loading
 
     if (id_kab) {
-        fetch(/location/kecamatan/${id_kab})
+        fetch(`/location/kecamatan/${id_kab}`)
             .then(response => response.json())
             .then(data => {
                 kecamatanDropdown.innerHTML = '<option value="">Pilih Kecamatan</option>';
@@ -704,7 +680,7 @@ function getKelurahan(id_kec) {
     kelurahanDropdown.innerHTML = '<option value="">Memuat...</option>'; // Tampilkan status loading
 
     if (id_kec) {
-        fetch(/location/kelurahan/${id_kec})
+        fetch(`/location/kelurahan/${id_kec}`)
             .then(response => response.json())
             .then(data => {
                 kelurahanDropdown.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
@@ -723,6 +699,7 @@ function getKelurahan(id_kec) {
         kelurahanDropdown.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
     }
 }
+
 function toggleFields() {
     const statusNikah = document.getElementById('status_nikah').value;
     const marriedFields = document.getElementById('married-fields');
@@ -833,43 +810,65 @@ function toggleBpjsFields() {
     }
 }
 
-function toggleBankFields() {
-    const noRekening = document.getElementById('no_rekening').value;
-    const namaBankField = document.getElementById('nama_bank_field');
-    const namaRekeningField = document.getElementById('nama_rekening_field');
-    const lampBukuRekeningField = document.getElementById('lamp_buku_rekening_field');
-    const noRekeningNote = document.getElementById('no_rekening_note'); // Catatan minimal 10 digit
+    function toggleBankFields() {
+        const noRekening = document.getElementById('no_rekening').value;
+        const namaBankField = document.getElementById('nama_bank_field');
+        const namaRekeningField = document.getElementById('nama_rekening_field');
+        const lampBukuRekeningField = document.getElementById('lamp_buku_rekening_field');
+        const noRekeningNote = document.getElementById('no_rekening_note'); // Catatan minimal 10 digit
 
-    // Menampilkan atau menyembunyikan catatan tergantung pada panjang Nomor Rekening
-    if (noRekening.length > 0 && noRekening.length < 10) {
-        noRekeningNote.style.display = 'inline'; // Tampilkan catatan jika kurang dari 10 digit
+        // Menampilkan atau menyembunyikan catatan tergantung pada panjang Nomor Rekening
+        if (noRekening.length > 0 && noRekening.length < 10) {
+            noRekeningNote.style.display = 'inline'; // Tampilkan catatan jika kurang dari 10 digit
+        } else {
+            noRekeningNote.style.display = 'none'; // Sembunyikan catatan jika sudah cukup 10 digit atau lebih
+        }
+
+        // Jika Nomor Rekening diisi, tampilkan Nama Bank
+        if (noRekening.length >= 10) {
+            namaBankField.style.display = 'block';
+        } else {
+            namaBankField.style.display = 'none';
+            namaRekeningField.style.display = 'none';
+            lampBukuRekeningField.style.display = 'none';
+        }
+
+        // Jika Nama Bank diisi, tampilkan Nama Pemilik Rekening
+        const namaBank = document.getElementById('nama_bank').value;
+        if (namaBank.length > 0) {
+            namaRekeningField.style.display = 'block';
+        } else {
+            namaRekeningField.style.display = 'none';
+            lampBukuRekeningField.style.display = 'none';
+        }
+
+        // Jika Nama Pemilik Rekening diisi, tampilkan Lampiran Buku Rekening
+        const bukuRekening = document.getElementById('lamp_buku_rekening').value;
+        if (namaRekening.length > 0) {
+            lampBukuRekeningField.style.display = 'block';
+        } else {
+            lampBukuRekeningField.style.display = 'none';
+        }
+
+        if (!noRekening) return; // Pastikan elemen ada
+
+    const noRekeningValue = noRekening.value.trim();
+
+    // Tampilkan catatan jika kurang dari 10 digit
+    if (noRekeningValue.length > 0 && noRekeningValue.length < 10) {
+        noRekeningNote.style.display = 'inline';
     } else {
-        noRekeningNote.style.display = 'none'; // Sembunyikan catatan jika sudah cukup 10 digit atau lebih
+        noRekeningNote.style.display = 'none';
     }
 
-    // Jika Nomor Rekening diisi, tampilkan Nama Bank
-    if (noRekening.length >= 10) {
+    // Jika nomor rekening minimal 10 digit, tampilkan semua field
+    if (noRekeningValue.length >= 10) {
         namaBankField.style.display = 'block';
+        namaRekeningField.style.display = 'block';
+        lampBukuRekeningField.style.display = 'block';
     } else {
         namaBankField.style.display = 'none';
         namaRekeningField.style.display = 'none';
-        lampBukuRekeningField.style.display = 'none';
-    }
-
-    // Jika Nama Bank diisi, tampilkan Nama Pemilik Rekening
-    const namaBank = document.getElementById('nama_bank').value;
-    if (namaBank.length > 0) {
-        namaRekeningField.style.display = 'block';
-    } else {
-        namaRekeningField.style.display = 'none';
-        lampBukuRekeningField.style.display = 'none';
-    }
-
-    // Jika Nama Pemilik Rekening diisi, tampilkan Lampiran Buku Rekening
-    const bukuRekening = document.getElementById('lamp_buku_rekening').value;
-    if (namaRekening.length > 0) {
-        lampBukuRekeningField.style.display = 'block';
-    } else {
         lampBukuRekeningField.style.display = 'none';
     }
 }
@@ -884,6 +883,7 @@ function validateNoKK() {
 
         if (isValidLength && isNumeric) {
             // Menampilkan field lampiran KK jika valid
+
             lampKKField.style.display = 'block';
             kkNote.style.display = 'none';
         } else {

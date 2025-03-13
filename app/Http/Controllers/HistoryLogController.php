@@ -6,6 +6,8 @@ use App\Models\HistoryLog;
 use App\Models\DataPegawai;
 use App\Models\Comment;
 use App\Models\Like;
+use App\Models\Hobi;
+use App\Models\Pelatihan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -26,7 +28,7 @@ class HistoryLogController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
+        $user = Auth::user(); // Mendapatkan pengguna yang sedang login
 
         // Paginasikan log untuk menampilkan 10 per halaman
         if ($user->is_admin) {
@@ -40,13 +42,20 @@ class HistoryLogController extends Controller
         // Ambil foto profil terbaru
         $recentProfilePhoto = $this->getMostRecentProfilePhoto();
 
-        // Ambil foto karyawan untuk setiap log
+        // Ambil foto karyawan dan hobi untuk setiap log
         foreach ($logs as $log) {
             $dataPegawai = DataPegawai::find($log->data_pegawai_id);
             $log->employee_photo = $dataPegawai ? $dataPegawai->photo : null; // Ambil foto karyawan
+
+            // Ambil hobi terkait
+            $hobi = Hobi::find($log->hobi_id); // Pastikan ada kolom hobi_id di tabel history_logs
+            $log->hobi = $hobi ? $hobi->name : null; // Ambil nama hobi
+
+            // Ambil lampiran jika ada
+            $log->lampiran = $log->lampiran ? Storage::url($log->lampiran) : null; // Ambil URL lampiran
         }
 
-        return view('beranda', compact('logs', 'recentProfilePhoto')); // Mengirimkan log dan foto profil terbaru ke halaman beranda
+        return view('beranda', compact('logs', 'recentProfilePhoto', 'user')); // Mengirimkan log dan foto profil terbaru ke halaman beranda
     }
 
     /**
@@ -72,7 +81,7 @@ class HistoryLogController extends Controller
         if ($request->hasFile('lampiran')) {
             $lampiran = $request->file('lampiran');
             $fileName = Str::random(40) . '.' . $lampiran->getClientOriginalExtension();
-            $path = $lampiran->storeAs('public/lampiran', $fileName); // Menyimpan file di storage
+            $path = $lampiran->storeAs('public/hobi', $fileName); // Menyimpan file di folder 'public/hobi'
 
             // Dapatkan URL file untuk ditampilkan
             $attachedFiles['lampiran'] = Storage::url($path);
@@ -87,13 +96,15 @@ class HistoryLogController extends Controller
         $changeDescription = implode(', ', $changes);
 
         HistoryLog::create([
+            'pelatihan_id' => $request->pelatihan_id ?? null, // ID Pelatihan jika ada
             'data_pegawai_id' => $dataPegawaiId,
             'action' => $action,
             'old_data' => json_encode($oldData),
             'new_data' => json_encode($newData),
             'name' => $changeDescription,
-            'user_id' => auth()->user()->id,
+            'user_id' => auth()->user()->id, // Menggunakan ID pengguna yang sedang login
             'lampiran' => $attachedFiles['lampiran'] ?? null, // Menyimpan file lampiran jika ada
+            'hobi_id' => $request->hobi_id ?? null, // Menyimpan ID hobi jika ada
         ]);
     }
 
@@ -139,8 +150,12 @@ class HistoryLogController extends Controller
      */
     public function showHistoryLogs()
     {
-        $historyLogs = HistoryLog::with(['comments', 'likes.user'])->paginate(10); // Paginasikan riwayat log
-        return view('history-log.index', compact('historyLogs'));
+        // Mengambil logs dengan paginasi (Anda dapat menambahkan filter atau hubungan yang diperlukan)
+        $logs = HistoryLog::with('dataPegawai', 'likes', 'comments', 'hobi') // Pastikan memuat hubungan seperti dataPegawai, likes, comments
+            ->orderBy('created_at', 'desc')
+            ->paginate(10); // Tentukan jumlah item per halaman sesuai kebutuhan
+        
+        return view('history-log.index', compact('logs'));
     }
 
     /**
@@ -245,5 +260,18 @@ class HistoryLogController extends Controller
         }
 
         return 'storage/default-profile.jpg'; // Fallback jika tidak ada file
+    }
+
+    /**
+     * Menampilkan log yang dipaginasi dengan history hobi.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function showLogs()
+    {
+        $logs = HistoryLog::paginate(10); // Ambil log biasa
+        $historyLogs = HistoryLog::where('hobi_id', '!=', null)->paginate(5); // Ambil log terkait hobi
+
+        return view('your-view-name', compact('logs', 'historyLogs'));
     }
 }

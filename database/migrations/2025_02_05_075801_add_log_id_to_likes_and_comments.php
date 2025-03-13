@@ -9,7 +9,11 @@ class AddLogIdToLikesAndComments extends Migration
     public function up()
     {
         // Cek apakah tabel 'likes' ada sebelum mengubahnya
-        if (Schema::hasTable('likes')) {
+        if (Schema::hasTable('
+        \\
+        \]]
+        ]
+        \\likes')) {
             // Tambahkan kolom log_id ke tabel 'likes' jika kolom tersebut belum ada
             Schema::table('likes', function (Blueprint $table) {
                 if (!Schema::hasColumn('likes', 'log_id')) {

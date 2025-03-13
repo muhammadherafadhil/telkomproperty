@@ -4,210 +4,233 @@
 
 @section('content')
 
-<!-- Meta Tag CSRF Token -->
-<!-- Meta Tag CSRF Token -->
+<!-- CSRF Token for AJAX -->
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
-<div class="log-history-container">
-    <h2 class="log-title">Riwayat Aktivitas Pegawai</h2>
+<div class="container py-5">
+    <h2 class="text-center mb-4">Riwayat Aktivitas Pegawai</h2>
 
-    @if($logs->isEmpty())
-        <div class="no-logs-message">
-            <p>Belum ada riwayat aktivitas yang tercatat.</p>
+    @php
+        $logs = $logs ?? collect();
+        $historyLogs = $historyLogs ?? collect();
+    @endphp
+
+    @if ($logs->isEmpty())
+        <div class="alert alert-warning text-center" role="alert">
+            Belum ada riwayat aktivitas yang tercatat.
         </div>
     @else
         <div class="log-feed">
-            @php
-                $seenCreatedAt = [];
-            @endphp
+            @php $seenCreatedAt = []; @endphp
 
             @foreach ($logs as $log)
                 @php
-                    if (in_array($log->created_at, $seenCreatedAt)) {
-                        continue;
-                    }
+                    // Skip logs with duplicate timestamps
+                    if (in_array($log->created_at, $seenCreatedAt)) continue;
                     $seenCreatedAt[] = $log->created_at;
 
-                    $oldData = json_decode($log->old_data, true) ?? [];
-                    $newData = json_decode($log->new_data, true) ?? [];
+                    // Decode old_data and new_data if they are strings
+                    $oldData = is_string($log->old_data) ? json_decode($log->old_data, true) : $log->old_data;
+                    $newData = is_string($log->new_data) ? json_decode($log->new_data, true) : $log->new_data;
                     $changes = [];
 
-                    foreach ($oldData as $key => $value) {
-                        if (isset($newData[$key]) && $value != $newData[$key]) {
-                            if ($key === 'lamp_foto_karyawan') {
-                                $changes[] = "<strong>Foto Karyawan:</strong><br>
-                                    <div class='photo-comparison'>
-                                        <img src='/storage/{$value}' alt='Foto Sebelum' class='employee-photo'>
-                                        <span>→</span>
-                                        <img src='/storage/{$newData[$key]}' alt='Foto Setelah' class='employee-photo'>
-                                    </div>";
-                            } elseif (preg_match('/lamp_|avatar_karyawan/', $key)) {
-                                $oldFileName = pathinfo($value, PATHINFO_BASENAME);
-                                $newFileName = pathinfo($newData[$key], PATHINFO_BASENAME);
-                                
-                                $changes[] = "<strong>Perubahan Lampiran:</strong> 
-                                    <span class='old-file'>{$oldFileName}</span> → 
-                                    <span class='new-file'>{$newFileName}</span>
-                                    <br>
-                                    <a href='/storage/{$value}' class='btn btn-link' target='_blank'>Lihat Lampiran Sebelumnya</a>
-                                    <span> | </span>
-                                    <a href='/storage/{$newData[$key]}' class='btn btn-link' target='_blank'>Lihat Lampiran Baru</a>";
-                            } else {
-                                $changes[] = "<strong>" . ucfirst(str_replace('_', ' ', $key)) . "</strong>: 
-                                    <span class='old-value'>{$value}</span> → 
-                                    <span class='new-value'>{$newData[$key]}</span>";
+                    // Compare data and prepare changes list
+                    foreach ($newData as $key => $newValue) {
+                        $oldValue = $oldData[$key] ?? null; // Handle null or empty values
+
+                        if ($oldValue !== $newValue) {
+                            switch ($key) {
+                                case 'lamp_foto_karyawan':
+                                    $changes[] = "<strong>Foto Karyawan:</strong><br>
+                                        <div class='photo-comparison'>
+                                            <img src='/storage/{$oldValue}' alt='Foto Sebelum' class='employee-photo'>
+                                            <span>→</span>
+                                            <img src='/storage/{$newValue}' alt='Foto Setelah' class='employee-photo'>
+                                        </div>";
+                                    break;
+                                case (preg_match('/lamp_|avatar_karyawan/', $key) ? true : false):
+                                    $oldFileName = pathinfo($oldValue, PATHINFO_BASENAME);
+                                    $newFileName = pathinfo($newValue, PATHINFO_BASENAME);
+                                    $changes[] = "<strong>Perubahan Lampiran:</strong>
+                                        <span class='old-file'>{$oldFileName}</span> → 
+                                        <span class='new-file'>{$newFileName}</span>
+                                        <br>
+                                        <button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$oldValue}' data-file-name='{$oldFileName}'>Lihat Lampiran Sebelumnya</button>
+                                        <span> | </span>
+                                        <button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$newValue}' data-file-name='{$newFileName}'>Lihat Lampiran Baru</button>";
+                                    break;
+                                default:
+                                    $changes[] = "<strong>" . ucfirst(str_replace('_', ' ', $key)) . "</strong>: 
+                                        <span class='old-value'>{$oldValue}</span> → 
+                                        <span class='new-value'>{$newValue}</span>";
                             }
                         }
                     }
                 @endphp
 
-                <div class="log-card">
-                    <div class="log-header">
-                        <div class="log-info">
-                            <img class="employee-profile-photo" src="{{ Storage::url($log->dataPegawai->profile_photo_url ?? 'default-profile.jpg') }}" alt="Foto Profil" width="100">
-                            <span class="log-user">{{ $log->dataPegawai->nama_lengkap ?? 'Pegawai Tidak Diketahui' }}</span>
-                            <span class="log-time">{{ $log->created_at->format('d-m-Y H:i:s') }}</span>
+                <div class="card mb-4 shadow-sm rounded-lg" data-log-id="{{ $log->id }}">
+                    <div class="card-header d-flex justify-content-between align-items-center p-3">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ Storage::url($log->employee_photo) }}" alt="User Photo" class="rounded-circle" style="width: 50px; height: 50px;">
+                            <div class="ms-3">
+                                <span class="font-weight-bold">{{ Auth::user()->name }}</span>
+                                <!-- Simplified Date Format -->
+                                <small class="text-muted">{{ \Carbon\Carbon::parse($log->created_at)->format('Y-m-d H:i:s') }}</small>
+                                <span class="log-user">{{ $log->dataPegawai->nama_lengkap ?? 'Pegawai Tidak Diketahui' }}</span>
+                            </div>
                         </div>
-                        <span class="log-action">{{ ucfirst($log->action) }}</span>
+
+                        <div class="badge-group">
+                            @if ($log->validation_status === 'approved')
+                                <span class="badge bg-success text-white">✅ Diterima</span>
+                            @elseif ($log->validation_status === 'rejected')
+                                <span class="badge bg-danger text-white">❌ Ditolak</span>
+                            @else
+                                <span class="badge bg-warning text-dark">⏳ Menunggu Validasi</span>
+                            @endif
+                        </div>
                     </div>
 
-                    <div class="log-body">
-                        <p class="log-description">{{ $log->name ?? 'Melakukan perubahan' }}</p>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ $log->name }}</h5>
+                        <p class="card-text"><strong>Hobi:</strong> {{ $log->hobi }}</p>
+
+                        @if ($log->lampiran && is_string($log->lampiran))
+                            <div class="attachment mb-3">
+                                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#fileModal" data-file="{{ Storage::url($log->lampiran) }}" data-file-name="{{ pathinfo($log->lampiran, PATHINFO_BASENAME) }}">Lihat Lampiran</button>
+                            </div>
+                        @endif
 
                         @if (!empty($changes))
-                            <ul class="log-changes">
+                            <ul class="list-unstyled mt-3">
                                 @foreach ($changes as $change)
-                                    <li class="log-item">{!! $change !!}</li>
+                                    <li class="log-item py-2 border-bottom">{!! $change !!}</li>
                                 @endforeach
                             </ul>
                         @else
-                            <p class="no-changes-message">Tidak ada perubahan signifikan yang tercatat.</p>
+                            <p class="text-muted">Tidak ada perubahan signifikan yang tercatat.</p>
                         @endif
-                    </div>
 
-                    <div class="like-section">
-                        <button class="like-btn {{ $log->likes->where('user_id', Auth::id())->isNotEmpty() ? 'liked' : '' }}" data-log-id="{{ $log->id }}">
-                            ❤️ <span class="like-count">{{ $log->likes->count() }}</span> {{ $log->likes->where('user_id', Auth::id())->isNotEmpty() ? 'Unlike' : 'Like' }}
-                        </button>
-                    </div>
+                        @if ($log->validation_status === 'pending' && Auth::user()->role === 'admin')
+                            <div class="validation-actions mt-3">
+                                <button class="btn btn-success btn-sm validate-btn" data-id="{{ $log->id }}" data-status="approved">✅ Approve</button>
+                                <button class="btn btn-danger btn-sm validate-btn" data-id="{{ $log->id }}" data-status="rejected">❌ Reject</button>
+                            </div>
+                        @endif
 
-                    <div class="comment-section">
-                        <form action="{{ route('logs.comment', $log->id) }}" method="POST">
-                            @csrf
-                            <input type="text" name="comment" placeholder="Tulis komentar..." required>
-                            <button type="submit">Kirim</button>
-                        </form>
+                        <div class="like-section mt-3">
+                            <button class="btn btn-outline-primary like-btn {{ ($log->likes && $log->likes->where('user_id', Auth::id())->isNotEmpty()) ? 'active' : '' }}" data-log-id="{{ $log->id }}">
+                                ❤️ <span class="like-count">{{ $log->likes ? $log->likes->count() : 0 }}</span> {{ ($log->likes && $log->likes->where('user_id', Auth::id())->isNotEmpty()) ? 'Unlike' : 'Like' }}
+                            </button>
+                        </div>
 
-                        <ul class="comments">
-                            @foreach ($log->comments as $comment)
-                                <li class="comment-item">
-                                    <strong>{{ $comment->user->dataPegawai->nama_lengkap ?? 'User Tidak Diketahui' }}:</strong>
-                                    <span class="comment-text">{{ $comment->comment }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
+                        <div class="comment-section mt-4">
+                            <form action="{{ route('logs.comment', $log->id) }}" method="POST" id="comment-form-{{ $log->id }}">
+                                @csrf
+                                <div class="input-group">
+                                    <input type="text" name="comment" class="form-control" placeholder="Tulis komentar..." required>
+                                    <button type="submit" class="btn btn-primary">Kirim</button>
+                                </div>
+                            </form>
+
+                            <ul class="comments mt-3">
+                                @foreach ($log->comments as $comment)
+                                    <li class="comment-item mb-2">
+                                        <strong>{{ $comment->user->dataPegawai->nama_lengkap ?? 'User Tidak Diketahui' }}:</strong>
+                                        <span class="comment-text">{{ $comment->comment }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
                 </div>
             @endforeach
+
+            <!-- Pagination (using Bootstrap 5) -->
+            <div class="d-flex justify-content-center">
+                {{ $logs->links('pagination::bootstrap-5') }}
+            </div>
         </div>
     @endif
 </div>
 
-<!-- Pagination Section -->
-<div class="pagination-container">
-    <div class="pagination">
-        <a href="{{ $logs->previousPageUrl() }}" class="page-btn {{ $logs->onFirstPage() ? 'disabled' : '' }}">← Sebelumnya</a>
-
-        <span class="page-indicators">
-            @for ($i = 1; $i <= $logs->lastPage(); $i++)
-                <a href="{{ $logs->url($i) }}" class="page-btn {{ $i == $logs->currentPage() ? 'active' : '' }}">{{ $i }}</a>
-            @endfor
-        </span>
-
-        <a href="{{ $logs->nextPageUrl() }}" class="page-btn {{ !$logs->hasMorePages() ? 'disabled' : '' }}">Selanjutnya →</a>
+<!-- Modal for Viewing Attachments -->
+<div class="modal fade" id="fileModal" tabindex="-1" aria-labelledby="fileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fileModalLabel">Lampiran File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="fileContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
     </div>
 </div>
 
-
-<!-- jQuery -->
+<!-- jQuery and Bootstrap JS (Bootstrap 5) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 $(document).ready(function() {
+    // CSRF setup for AJAX requests
     $.ajaxSetup({
         headers: {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
         }
     });
 
-    function loadLogs(url) {
-        $.ajax({
-            url: url,
-            type: 'GET',
-            beforeSend: function() {
-                $('.log-feed').addClass('loading');
-            },
-            success: function(response) {
-                let newContent = $(response).find('.log-feed').html();
-                let paginationLinks = $(response).find('.pagination').html();
-                $('.log-feed').html(newContent);
-                $('.pagination').html(paginationLinks);
-            },
-            error: function() {
-                alert("Gagal memuat halaman. Coba lagi.");
-            },
-            complete: function() {
-                $('.log-feed').removeClass('loading');
-            }
-        });
-    }
+    // Handle file modal when clicking on attachment button
+    $('#fileModal').on('show.bs.modal', function(event) {
+        var button = $(event.relatedTarget); // Button that triggered the modal
+        var fileUrl = button.data('file');
+        var fileName = button.data('file-name');
 
-    $(document).on('click', '.pagination a', function(e) {
-        e.preventDefault();
-        let url = $(this).attr('href');
-        if (url) {
-            loadLogs(url);
+        var fileExtension = fileName.split('.').pop().toLowerCase();
+
+        var content = '';
+
+        if (fileExtension === 'jpg' || fileExtension === 'png' || fileExtension === 'jpeg') {
+            content = '<img src="' + fileUrl + '" class="img-fluid" alt="Lampiran Gambar">';
+        } else {
+            content = '<a href="' + fileUrl + '" target="_blank" class="btn btn-primary btn-sm">Download ' + fileName + '</a>';
         }
+
+        $('#fileContent').html(content);
     });
 
+    // Like functionality
     $(document).on('click', '.like-btn', function() {
-        let button = $(this);
-        let logId = button.data('log-id');
-        button.prop('disabled', true);
+        var button = $(this);
+        var logId = button.data('log-id');
 
         $.ajax({
             url: '/logs/' + logId + '/like',
             type: 'POST',
             success: function(response) {
+                let newLikes = response.likes;
                 if (response.status === 'liked') {
-                    button.addClass('liked').html('❤️ Unlike <span class="like-count">' + response.likes + '</span>');
+                    button.addClass('active').html('❤️ Unlike <span class="like-count">' + newLikes + '</span>');
                 } else {
-                    button.removeClass('liked').html('❤️ Like <span class="like-count">' + response.likes + '</span>');
+                    button.removeClass('active').html('❤️ Like <span class="like-count">' + newLikes + '</span>');
                 }
-                localStorage.setItem('log_like_' + logId, response.status);
             },
             error: function() {
                 alert("Gagal memperbarui like. Silakan coba lagi.");
-            },
-            complete: function() {
-                button.prop('disabled', false);
             }
         });
     });
 
-    $('.like-btn').each(function() {
-        let button = $(this);
-        let logId = button.data('log-id');
-        let status = localStorage.getItem('log_like_' + logId);
-        if (status === 'liked') {
-            button.addClass('liked').html('❤️ Unlike <span class="like-count">' + button.data('likes') + '</span>');
-        }
-    });
-
+    // Validate logs (for admin role)
     $(document).on('click', '.validate-btn', function() {
-        let logId = $(this).data('id');
-        let status = $(this).data('status');
-        
+        var logId = $(this).data('id');
+        var status = $(this).data('status');
+
         $.ajax({
             url: '/logs/' + logId + '/validate',
             type: 'POST',
@@ -222,11 +245,12 @@ $(document).ready(function() {
         });
     });
 
-    $(document).on('submit', '.comment-form', function(e) {
+    // Comment form submission
+    $(document).on('submit', '.comment-section form', function(e) {
         e.preventDefault();
-        let form = $(this);
-        let formData = form.serialize();
-        
+        var form = $(this);
+        var formData = form.serialize();
+
         $.ajax({
             url: form.attr('action'),
             type: 'POST',
@@ -240,422 +264,379 @@ $(document).ready(function() {
             }
         });
     });
-
-    function showFullImageViewer(imageElement) {
-        let fullImageUrl = imageElement.src;
-        let fullImageViewer = $('<div class="full-image-viewer">')
-            .append($('<img>').attr('src', fullImageUrl).addClass('full-image'));
-        
-        $('body').append(fullImageViewer);
-        $('.full-image-viewer').on('click', function() {
-            $(this).remove();
-        });
-    }
-
-    $(document).on('click', '.employee-photo', function() {
-        showFullImageViewer(this);
-    });
-
-    $(document).on('change', '.employee-photo-input', function() {
-        let file = this.files[0];
-        if (file) {
-            let allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-            if (!allowedTypes.includes(file.type)) {
-                alert('Hanya file gambar (jpg, png, gif) yang diperbolehkan');
-                this.value = '';
-                return;
-            }
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                let img = new Image();
-                img.src = e.target.result;
-                img.onload = function() {
-                    if (this.width > 2000 || this.height > 2000) {
-                        alert('Ukuran gambar terlalu besar. Maksimal 2000x2000 pixel');
-                        this.value = '';
-                    }
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-    });
 });
-
 </script>
 
-
 <style>
-    /* Global Styles */
-    body {
-        font-family: 'Arial', sans-serif;
-        background-color: #f7f7f7;
-        margin: 0;
-        padding: 0;
-        color: #333;
-    }
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f6f9;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
 
-    .log-history-container {
-        max-width: 1000px;
-        margin: 40px auto;
-        padding: 30px;
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    }
+/* Log History Container */
+.log-history-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 40px;
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+}
 
-    .log-title {
-        text-align: center;
-        font-size: 36px;
-        font-weight: bold;
-        color: #2980b9;
-        margin-bottom: 20px;
-    }
+/* Log Title */
+.log-title {
+    text-align: center;
+    font-size: 36px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 40px;
+}
 
-    .no-logs-message {
-        text-align: center;
-        font-size: 18px;
-        color: #7f8c8d;
-    }
+/* Log Feed */
+.log-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
 
-    /* Log Feed */
-    .log-feed {
-        display: flex;
-        flex-direction: column;
-        gap: 25px;
-    }
+/* Log Card Styles */
+.log-card {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
 
-    /* Log Card Styles */
-    .log-card {
-        background: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-    }
+.log-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
 
-    .log-card:hover {
-        transform: translateY(-5px);
-    }
+/* Log Header */
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
 
-    /* Log Header Styles */
-    .log-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
-    }
+/* User Info */
+.log-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
 
-    .log-info {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
+.profile-photo {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
 
-    .log-user {
-        font-weight: bold;
-        font-size: 16px;
-        color: #2980b9;
-    }
+.log-user-info {
+    display: flex;
+    flex-direction: column;
+}
 
-    .log-time {
-        font-size: 14px;
-        color: #95a5a6;
-    }
+.log-user {
+    font-weight: 600;
+    font-size: 18px;
+    color: #2980b9;
+}
 
-    .log-action {
-        font-weight: bold;
-        font-size: 16px;
-        color: #27ae60;
-    }
+.log-time {
+    font-size: 14px;
+    color: #7f8c8d;
+}
 
-    /* Log Body */
-    .log-body {
-        margin-top: 15px;
-    }
+.log-action {
+    font-weight: 600;
+    font-size: 16px;
+    color: #27ae60;
+}
 
-    .log-description {
-        font-size: 16px;
-        color: #333;
-    }
+/* Log Body */
+.log-body {
+    margin-top: 20px;
+}
 
-    /* Changes List */
-    .log-changes {
-        margin-top: 10px;
-        padding: 15px;
-        background-color: #ecf0f1;
-        border-radius: 8px;
-        list-style-type: none;
-    }
+/* Description */
+.log-description {
+    font-size: 16px;
+    color: #333;
+}
 
-    .log-item {
-        font-size: 14px;
-        color: #34495e;
-        margin-bottom: 5px;
-    }
+/* Changes List */
+.log-changes {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #ecf0f1;
+    border-radius: 10px;
+    list-style-type: none;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+}
 
-    .old-value {
-        color: #e74c3c;
-    }
+.log-item {
+    font-size: 15px;
+    color: #34495e;
+    margin-bottom: 12px;
+}
 
-    .new-value {
-        color: #2ecc71;
-    }
+.old-value {
+    color: #e74c3c;
+}
 
-    /* Profile Photo */
-    .profile-photo {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
+.new-value {
+    color: #2ecc71;
+}
 
-    /* Attachment Photos */
-    .attachment-gallery {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
+/* Like Button */
+.like-btn {
+    padding: 12px 25px;
+    background-color: #ff5722;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+    border: none;
+    text-align: center;
+}
 
-    .attachment-photo {
-        width: 20px; /* Ukuran lampiran gambar */
-        height: 20px; /* Ukuran lampiran gambar */
-        object-fit: cover; /* Memastikan foto tidak terdistorsi */
-        border-radius: 4px;
-        border: 1px solid #ddd;
-    }
+.like-btn.liked {
+    background-color: #e74c3c;
+}
 
-    /* Profile Photo Before & After */
-    .profile-photo-change {
-        margin-top: 25px;
-        display: flex;
-        gap: 25px;
-    }
+.like-btn:hover {
+    opacity: 0.8;
+}
 
-    .profile-photo-change img {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
+/* Pagination */
+.pagination-container {
+    margin-top: 40px;
+    text-align: center;
+}
 
-    /* Pagination */
-    .pagination-container {
-        margin-top: 30px;
-        text-align: center;
-    }
+.page-btn {
+    padding: 12px 25px;
+    background-color: #2980b9;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 0 5px;
+}
 
-    .pagination {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-    }
+.page-btn:hover {
+    background-color: #3498db;
+}
 
-    .page-btn {
-        padding: 10px 20px;
-        background-color: #3498db;
-        color: white;
-        border-radius: 5px;
-        text-decoration: none;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
+.page-btn.active {
+    background-color: #2ecc71;
+}
 
-    .page-btn.disabled {
-        background-color: #bdc3c7;
-        cursor: not-allowed;
-    }
+/* Comment Section */
+.comment-section {
+    margin-top: 30px;
+}
 
-    .page-btn.active {
-        background-color: #2ecc71;
-    }
+.comment-section form {
+    display: flex;
+    gap: 15px;
+}
 
-    .page-btn:hover:not(.disabled) {
-        background-color: #2980b9;
-    }
+.comment-section input {
+    flex: 1;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 15px;
+    color: #555;
+}
 
-    /* Buttons */
-    .like-btn, .check-btn, .cross-btn {
-        padding: 12px 18px;
-        border: none;
-        cursor: pointer;
-        border-radius: 6px;
-        transition: background-color 0.3s ease, transform 0.3s ease;
-    }
+.comment-section button {
+    padding: 14px 20px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
 
-    .like-btn {
-        background-color: #ff5722;
-        color: white;
-    }
+.comment-section button:hover {
+    background-color: #2ecc71;
+}
 
-    .like-btn.liked {
-        background-color: #e74c3c;
-    }
+.comment-section ul {
+    margin-top: 20px;
+    list-style: none;
+    padding: 0;
+}
 
-    .check-btn {
-        background-color: #4caf50;
-        color: white;
-    }
+.comment-section li {
+    font-size: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f1f1;
+    background-color: #f9f9f9;
+}
 
-    .cross-btn {
-        background-color: #f44336;
-        color: white;
-    }
+/* Additional Enhancements */
+.card-header {
+    background-color: #f9fafc;
+    border-bottom: 1px solid #e2e6ea;
+}
 
-    .like-btn:hover, .check-btn:hover, .cross-btn:hover {
-        opacity: 0.8;
-        transform: scale(1.05);
-    }
+.badge-group {
+    font-size: 12px;
+    display: flex;
+    gap: 8px;
+}
 
-    /* Comment Section */
-    .comment-section {
-        margin-top: 20px;
-    }
+.badge-group span {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+}
 
-    .comment-section form {
-        display: flex;
-        gap: 10px;
-    }
+.badge-group .badge-success {
+    background-color: #2ecc71;
+    color: white;
+}
 
-    .comment-section input {
-        flex: 1;
-        padding: 10px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        font-size: 14px;
-    }
+.badge-group .badge-danger {
+    background-color: #e74c3c;
+    color: white;
+}
 
-    .comment-section button {
-        padding: 10px 15px;
-        background-color: #27ae60;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
+.badge-group .badge-warning {
+    background-color: #f39c12;
+    color: white;
+}
 
-    .comment-section button:hover {
-        background-color: #2ecc71;
-    }
+.attachment {
+    border: 1px solid #ddd;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    margin-top: 20px;
+}
 
-    .comment-section ul {
-        margin-top: 10px;
-        list-style: none;
-        padding: 0;
-    }
+.comment-item {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
 
-    .comment-section li {
-        font-size: 14px;
-        padding: 8px 0;
-        border-bottom: 1px solid #f1f1f1;
-        background-color: #f9f9f9;
-    }
+.comment-item strong {
+    color: #2980b9;
+}
 
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .log-history-container {
-            padding: 15px;
-        }
+/* Input Group for Comment Section */
+.input-group {
+    display: flex;
+    gap: 10px;
+}
 
-        .log-title {
-            font-size: 28px;
-        }
+.input-group input {
+    flex: 1;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    color: #333;
+}
 
-        .log-feed {
-            gap: 15px;
-        }
+.input-group button {
+    padding: 14px 20px;
+    background-color: #2980b9;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
 
-        .log-card {
-            padding: 15px;
-        }
+.input-group button:hover {
+    background-color: #3498db;
+}
 
-        .pagination-container {
-            margin-top: 20px;
-        }
-    }
+/* Tooltip */
+.tooltip {
+    position: absolute;
+    background-color: #333;
+    color: white;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 12px;
+    z-index: 1000;
+}
 
-    /* Additional Styles */
-    .photo-comparison {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+/* Employee Photo */
+.employee-photo {
+    max-width: 180px;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 3px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 
-    .employee-photo {
-        width: 80px; /* Ukuran foto karyawan */
-        height: 80px; /* Ukuran foto karyawan */
-        object-fit: cover; /* Memastikan foto tidak terdistorsi */
-        margin: 0 5px; /* Jarak antar foto */
-    }
+/* Modal Styles */
+.modal-content {
+    border-radius: 10px;
+    border: 2px solid #2980b9;
+}
 
-    .profile-photo-before, .profile-photo-after {
-        width: 100px; /* Ukuran foto profil */
-        height: 100px; /* Ukuran foto profil */
-        object-fit: cover; /* Memastikan foto tidak terdistorsi */
-        margin: 0 5px; /* Jarak antar foto */
-    }
+.modal-header {
+    background-color: #2980b9;
+    color: white;
+    font-weight: 600;
+}
 
-    .lampiran-image {
-        width: 20px; /* Ukuran lampiran gambar */
-        height: 20px; /* Ukuran lampiran gambar */
-        object-fit: cover; /* Memastikan foto tidak terdistorsi */
-        margin: 0 5px; /* Jarak antar gambar */
-    }
+.modal-body {
+    padding: 20px;
+}
 
-    .full-image-viewer {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-    }
+.modal-footer {
+    border-top: 1px solid #ddd;
+}
 
-    .full-image {
-        max-width: 90%;
-        max-height: 90%;
-    }
+/* Button Styles for Admin */
+.validate-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    border: none;
+}
 
-    /* File Link Styles */
-    .file-link {
-        display: flex;
-        align-items: center;
-        text-decoration: none;
-        color: #2980b9;
-    }
+.validate-btn.approve {
+    background-color: #2ecc71;
+    color: white;
+}
 
-    .file-link:hover {
-        text-decoration: underline;
-    }
+.validate-btn.reject {
+    background-color: #e74c3c;
+    color: white;
+}
 
-    .lampiran-image {
-        width: 20px; /* Ukuran ikon */
-        height: 20px; /* Ukuran ikon */
-        object-fit: cover; /* Memastikan foto tidak terdistorsi */
-        margin-right: 5px; /* Jarak antara ikon dan nama file */
-    }
-
-    /* Button Link Styles */
-    .btn-link {
-        display: inline-block;
-        padding: 8px 12px;
-        margin-top: 5px;
-        background-color: #007bff; /* Bootstrap primary color */
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-    }
-
-    .btn-link:hover {
-        background-color: #0056b3; /* Darker shade on hover */
-    }
+.validate-btn:hover {
+    opacity: 0.9;
+}
 </style>
+
 
 <!-- sosial media -->
 <div class="container py-5">

@@ -11,6 +11,12 @@ use App\Http\Controllers\BerandaController;
 use App\Http\Controllers\EmployeeCountController;
 use App\Http\Controllers\HistoryLogController;
 use App\Http\Controllers\LogInteractionController;
+use App\Http\Controllers\HobiController;
+use App\Http\Controllers\KeterampilanController;
+use App\Http\Controllers\PelatihanController;
+use App\Http\Controllers\PendidikanController;
+use App\Http\Controllers\PenghargaanController;
+use App\Http\Controllers\RiwayatJabatanController;
 
 // Route untuk lokasi (kabupaten, kecamatan, kelurahan)
 Route::get('/location/kabupaten/{id_prov}', [DataPegawaiController::class, 'getKabupaten'])->name('location.kabupaten');
@@ -33,18 +39,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/data-pegawai', [DataPegawaiController::class, 'index'])->name('data-pegawai.index');
     Route::get('/data-pegawai/{nik}/edit', [DataPegawaiController::class, 'edit'])->name('data-pegawai.edit');
     Route::patch('/data-pegawai/{nik}', [DataPegawaiController::class, 'update'])->name('data-pegawai.update');
-
-    // Route untuk halaman beranda (feed postingan)
-    Route::get('/beranda', [PostController::class, 'index'])->name('beranda');
-
-    // Route untuk membuat postingan baru dengan gambar
-    Route::post('/posts', [PostController::class, 'store'])->name('posts.store');
-
-    // Route untuk menambahkan komentar pada postingan
-    Route::post('/posts/{postId}/comments', [PostController::class, 'addComment']);
-
-    // Route untuk menambah like pada postingan
-    Route::post('/posts/{postId}/like', [PostController::class, 'likePost']);
 });
 
 // Rute untuk mengelola rencana (plans)
@@ -68,7 +62,7 @@ Route::middleware('auth')->group(function () {
 // Rute untuk pengguna biasa yang mengelola kinerja mereka sendiri
 Route::prefix('performance')->middleware('auth')->group(function() {
     Route::get('/', [PerformanceController::class, 'index'])->name('performance.index');
-    Route::get('create', [PerformanceController::class, 'createForUser'])->name('performance.create');
+    Route::get('create', [PerformanceController::class, 'createForUser '])->name('performance.create');
     Route::post('/', [PerformanceController::class, 'store'])->name('performance.store');
     Route::get('edit/{performance}', [PerformanceController::class, 'edit'])->name('performance.edit');
     Route::put('update/{performance}', [PerformanceController::class, 'update'])->name('performance.update');
@@ -104,3 +98,33 @@ Route::middleware('auth')->group(function () {
 Route::post('/logs/{log}/like', [LogInteractionController::class, 'like'])->name('logs.like');
 Route::post('/logs/{log}/comment', [LogInteractionController::class, 'comment'])->name('logs.comment');
 Route::middleware(['auth', 'admin'])->post('/logs/{id}/validate', [HistoryLogController::class, 'validateLog']);
+
+// ====================== ROUTE HOBI ======================
+Route::middleware('auth')->group(function () {
+    Route::resource('hobi', HobiController::class);
+});
+
+// ====================== ROUTE KETERAMPILAN ======================
+Route::middleware('auth')->group(function () {
+    Route::resource('keterampilan', KeterampilanController::class);
+});
+
+// ====================== ROUTE PELATIHAN ======================
+Route::middleware('auth')->group(function () {
+    Route::resource('pelatihan', PelatihanController::class);
+});
+
+// ====================== ROUTE PENDIDIKAN ======================
+Route::middleware('auth')->group(function () {
+    Route::resource('pendidikan', PendidikanController::class);
+});
+
+// ====================== ROUTE PENGHARGAAN ======================
+Route::middleware('auth')->group(function () {
+    Route::resource('penghargaan', PenghargaanController::class);
+});
+
+// ====================== ROUTE RIWAYAT JABATAN ======================
+Route::middleware('auth')->group(function () {
+    Route::resource('riwayatjabatan', RiwayatJabatanController::class);
+});

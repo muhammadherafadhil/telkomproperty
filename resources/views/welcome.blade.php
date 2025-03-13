@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <title>@yield('title', 'Default Title')</title>
+    <title>@yield('title', 'Wazazazaaza P1 Telrpo!')</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 n      <style>
@@ -177,6 +177,9 @@ n      <style>
             display: flex;
             justify-content: space-between;
         }
+
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+</head>
     </style>
 </head>
 
@@ -202,6 +205,31 @@ n      <style>
                    class="{{ Request::routeIs('data-pegawai.index') ? 'active' : '' }}">
                     <i class="bi bi-people"></i><span>Profil</span>
                 </a>
+                <a href="{{ route('hobi.index') }}" 
+                   class="{{ Request::routeIs('hobi.index') ? 'active' : '' }}">
+                    <i class="bi bi-book"></i><span>Hobi</span>
+                </a>
+                <a href="{{ route('keterampilan.index') }}" 
+                   class="{{ Request::routeIs('keterampilan.index') ? 'active' : '' }}">
+                    <i class="bi bi-pin"></i><span>Keterampilan</span>
+                </a>
+                <a href="{{ route('pelatihan.index') }}" 
+                   class="{{ Request::routeIs('pelatihan.index') ? 'active' : '' }}">
+                    <i class="bi bi-train-freight-front"></i><span>Pelatihan</span>
+                </a>
+                <a href="{{ route('pendidikan.index') }}" 
+                   class="{{ Request::routeIs('pendidikan.index') ? 'active' : '' }}">
+                    <i class="bi bi-luggage"></i><span>Pendidikan</span>
+                </a>
+                <a href="{{ route('penghargaan.index') }}" 
+                   class="{{ Request::routeIs('penghargaan.index') ? 'active' : '' }}">
+                    <i class="bi bi-award"></i><span>Penghargaan</span>
+                </a>
+                <a href="{{ route('riwayatjabatan.index') }}" 
+                   class="{{ Request::routeIs('riwayatjabatan.index') ? 'active' : '' }}">
+                    <i class="bi bi-buildings"></i><span>Jabatan</span>
+                </a>
+                
             </div>
         </div>
         <div class="sidebar-footer">
