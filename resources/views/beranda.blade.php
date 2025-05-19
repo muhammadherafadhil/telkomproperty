@@ -12,7 +12,6 @@
 
     @php
         $logs = $logs ?? collect();
-        $historyLogs = $historyLogs ?? collect();
     @endphp
 
     @if ($logs->isEmpty())
@@ -25,45 +24,45 @@
 
             @foreach ($logs as $log)
                 @php
-                    // Skip logs with duplicate timestamps
                     if (in_array($log->created_at, $seenCreatedAt)) continue;
                     $seenCreatedAt[] = $log->created_at;
 
-                    // Decode old_data and new_data if they are strings
-                    $oldData = is_string($log->old_data) ? json_decode($log->old_data, true) : $log->old_data;
-                    $newData = is_string($log->new_data) ? json_decode($log->new_data, true) : $log->new_data;
+                    $oldData = is_string($log->old_data) ? json_decode($log->old_data, true) : ($log->old_data ?? []);
+                    $newData = is_string($log->new_data) ? json_decode($log->new_data, true) : ($log->new_data ?? []);
                     $changes = [];
 
-                    // Compare data and prepare changes list
                     foreach ($newData as $key => $newValue) {
-                        $oldValue = $oldData[$key] ?? null; // Handle null or empty values
+                        $oldValue = $oldData[$key] ?? null;
 
-                        if ($oldValue !== $newValue) {
-                            switch ($key) {
-                                case 'lamp_foto_karyawan':
-                                    $changes[] = "<strong>Foto Karyawan:</strong><br>
-                                        <div class='photo-comparison'>
-                                            <img src='/storage/{$oldValue}' alt='Foto Sebelum' class='employee-photo'>
-                                            <span>→</span>
-                                            <img src='/storage/{$newValue}' alt='Foto Setelah' class='employee-photo'>
-                                        </div>";
-                                    break;
-                                case (preg_match('/lamp_|avatar_karyawan/', $key) ? true : false):
-                                    $oldFileName = pathinfo($oldValue, PATHINFO_BASENAME);
-                                    $newFileName = pathinfo($newValue, PATHINFO_BASENAME);
-                                    $changes[] = "<strong>Perubahan Lampiran:</strong>
-                                        <span class='old-file'>{$oldFileName}</span> → 
-                                        <span class='new-file'>{$newFileName}</span>
-                                        <br>
-                                        <button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$oldValue}' data-file-name='{$oldFileName}'>Lihat Lampiran Sebelumnya</button>
-                                        <span> | </span>
-                                        <button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$newValue}' data-file-name='{$newFileName}'>Lihat Lampiran Baru</button>";
-                                    break;
-                                default:
-                                    $changes[] = "<strong>" . ucfirst(str_replace('_', ' ', $key)) . "</strong>: 
-                                        <span class='old-value'>{$oldValue}</span> → 
-                                        <span class='new-value'>{$newValue}</span>";
-                            }
+                        if ($oldValue === $newValue || (empty($oldValue) && empty($newValue))) continue;
+
+                        switch ($key) {
+                            case 'lamp_foto_karyawan':
+                                $changes[] = "
+                                    <strong>Foto Karyawan:</strong><br>
+                                    <div class='photo-comparison'>
+                                        <img src='/storage/{$oldValue}' alt='Foto Sebelum' class='employee-photo clickable' data-img='/storage/{$oldValue}'>
+                                        <span>→</span>
+                                        <img src='/storage/{$newValue}' alt='Foto Setelah' class='employee-photo clickable' data-img='/storage/{$newValue}'>
+                                    </div>";
+                                break;
+
+                            case (preg_match('/lamp_|avatar_karyawan/', $key) ? true : false):
+                                $oldFileName = $oldValue ? pathinfo($oldValue, PATHINFO_BASENAME) : 'Kosong';
+                                $newFileName = $newValue ? pathinfo($newValue, PATHINFO_BASENAME) : 'Kosong';
+
+                                $oldBtn = $oldValue ? "<button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$oldValue}' data-file-name='{$oldFileName}'>Lihat Lampiran Sebelumnya</button>" : '';
+                                $newBtn = $newValue ? "<button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$newValue}' data-file-name='{$newFileName}'>Lihat Lampiran Baru</button>" : '';
+
+                                $changes[] = "<strong>Lampiran:</strong> 
+                                    <span class='old-file'>{$oldFileName}</span> → 
+                                    <span class='new-file'>{$newFileName}</span><br>{$oldBtn}" . ($oldBtn && $newBtn ? ' | ' : '') . "{$newBtn}";
+                                break;
+
+                            default:
+                                $changes[] = "<strong>" . ucfirst(str_replace('_', ' ', $key)) . "</strong>: 
+                                    <span class='old-value'>" . ($oldValue ?? '-') . "</span> → 
+                                    <span class='new-value'>" . ($newValue ?? '-') . "</span>";
                         }
                     }
                 @endphp
@@ -73,9 +72,8 @@
                         <div class="d-flex align-items-center">
                             <img src="{{ Storage::url($log->employee_photo) }}" alt="User Photo" class="rounded-circle" style="width: 50px; height: 50px;">
                             <div class="ms-3">
-                                <span class="font-weight-bold">{{ Auth::user()->name }}</span>
-                                <!-- Simplified Date Format -->
-                                <small class="text-muted">{{ \Carbon\Carbon::parse($log->created_at)->format('Y-m-d H:i:s') }}</small>
+                                <span class="fw-bold">{{ Auth::user()->name }}</span><br>
+                                <small class="text-muted">{{ \Carbon\Carbon::parse($log->created_at)->format('Y-m-d H:i:s') }}</small><br>
                                 <span class="log-user">{{ $log->dataPegawai->nama_lengkap ?? 'Pegawai Tidak Diketahui' }}</span>
                             </div>
                         </div>
@@ -146,7 +144,6 @@
                 </div>
             @endforeach
 
-            <!-- Pagination (using Bootstrap 5) -->
             <div class="d-flex justify-content-center">
                 {{ $logs->links('pagination::bootstrap-5') }}
             </div>
@@ -160,17 +157,28 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="fileModalLabel">Lampiran File</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body">
-                <div id="fileContent"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <div id="fileContent" class="text-center">
+                    <!-- Akan diisi lewat JS -->
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Modal for Enlarged Images -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-body p-0">
+                <img src="" id="modalImage" class="img-fluid w-100" alt="Enlarged Image">
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- jQuery and Bootstrap JS (Bootstrap 5) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -265,59 +273,105 @@ $(document).ready(function() {
         });
     });
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Handle attachment modal
+    const fileModal = document.getElementById('fileModal');
+    fileModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const fileUrl = button.getAttribute('data-file');
+        const fileName = button.getAttribute('data-file-name');
+        const fileContent = document.getElementById('fileContent');
+
+        if (/\.(jpg|jpeg|png|gif)$/i.test(fileUrl)) {
+            fileContent.innerHTML = `<img src="${fileUrl}" class="img-fluid" alt="${fileName}">`;
+        } else {
+            fileContent.innerHTML = `<iframe src="${fileUrl}" class="w-100" style="height:500px;"></iframe>`;
+        }
+    });
+
+    // Handle click on photos for zoom
+    document.querySelectorAll('.clickable').forEach(img => {
+        img.addEventListener('click', function () {
+            const src = this.getAttribute('data-img');
+            const modalImg = document.getElementById('modalImage');
+            modalImg.src = src;
+            const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+            imageModal.show();
+        });
+    });
+});
+
 </script>
 
 <style>
-/* Base Styles */
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f4f6f9;
+/* ===================================
+   RESET & BASE STYLES
+=================================== */
+* {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    color: #333;
 }
 
-/* Log History Container */
-.log-history-container {
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* ===================================
+   CONTAINER & GENERAL LAYOUT
+=================================== */
+.container {
     max-width: 1200px;
     margin: 40px auto;
     padding: 40px;
-    background-color: #ffffff;
+    background-color: #fff;
     border-radius: 16px;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.05);
 }
 
-/* Log Title */
-.log-title {
+/* ===================================
+   HEADINGS & TITLES
+=================================== */
+.heading-primary {
     text-align: center;
-    font-size: 36px;
+    font-size: 2.5rem;
     font-weight: 700;
     color: #2c3e50;
     margin-bottom: 40px;
 }
 
-/* Log Feed */
+/* ===================================
+   LOG FEED
+=================================== */
 .log-feed {
     display: flex;
     flex-direction: column;
     gap: 30px;
 }
 
-/* Log Card Styles */
+/* ===================================
+   LOG CARD
+=================================== */
 .log-card {
     background: #ffffff;
     padding: 30px;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
 }
 
 .log-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+    transform: translateY(-6px);
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.1);
 }
 
-/* Log Header */
+/* ===================================
+   LOG HEADER
+=================================== */
 .log-header {
     display: flex;
     justify-content: space-between;
@@ -325,11 +379,10 @@ body {
     margin-bottom: 20px;
 }
 
-/* User Info */
 .log-info {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
 }
 
 .profile-photo {
@@ -337,7 +390,7 @@ body {
     height: 60px;
     border-radius: 50%;
     object-fit: cover;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
 }
 
 .log-user-info {
@@ -346,8 +399,8 @@ body {
 }
 
 .log-user {
-    font-weight: 600;
     font-size: 18px;
+    font-weight: 600;
     color: #2980b9;
 }
 
@@ -357,36 +410,36 @@ body {
 }
 
 .log-action {
-    font-weight: 600;
     font-size: 16px;
+    font-weight: 600;
     color: #27ae60;
 }
 
-/* Log Body */
+/* ===================================
+   LOG CONTENT
+=================================== */
 .log-body {
     margin-top: 20px;
 }
 
-/* Description */
 .log-description {
     font-size: 16px;
-    color: #333;
+    color: #444;
 }
 
-/* Changes List */
 .log-changes {
     margin-top: 20px;
     padding: 20px;
-    background-color: #ecf0f1;
+    background-color: #f1f3f5;
     border-radius: 10px;
-    list-style-type: none;
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+    list-style: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
 .log-item {
-    font-size: 15px;
-    color: #34495e;
     margin-bottom: 12px;
+    font-size: 15px;
+    color: #2c3e50;
 }
 
 .old-value {
@@ -397,83 +450,99 @@ body {
     color: #2ecc71;
 }
 
-/* Like Button */
-.like-btn {
+/* ===================================
+   BUTTONS
+=================================== */
+.btn,
+.like-btn,
+.page-btn,
+.validate-btn,
+.comment-section button,
+.input-group button {
+    display: inline-block;
     padding: 12px 25px;
-    background-color: #ff5722;
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
     border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
     text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.like-btn {
+    background-color: #ff5722;
+    color: #fff;
 }
 
 .like-btn.liked {
     background-color: #e74c3c;
 }
 
-.like-btn:hover {
-    opacity: 0.8;
-}
-
-/* Pagination */
-.pagination-container {
-    margin-top: 40px;
-    text-align: center;
-}
-
 .page-btn {
-    padding: 12px 25px;
     background-color: #2980b9;
-    color: white;
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin: 0 5px;
-}
-
-.page-btn:hover {
-    background-color: #3498db;
+    color: #fff;
+    margin: 0 4px;
 }
 
 .page-btn.active {
     background-color: #2ecc71;
 }
 
-/* Comment Section */
+.comment-section button,
+.input-group button {
+    background-color: #27ae60;
+    color: #fff;
+}
+
+.validate-btn.approve {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.validate-btn.reject {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn:hover,
+.page-btn:hover,
+.like-btn:hover,
+.validate-btn:hover,
+.comment-section button:hover,
+.input-group button:hover {
+    opacity: 0.9;
+}
+
+/* ===================================
+   PAGINATION
+=================================== */
+.pagination-container {
+    margin-top: 40px;
+    text-align: center;
+}
+
+/* ===================================
+   COMMENT SECTION
+=================================== */
 .comment-section {
     margin-top: 30px;
 }
 
 .comment-section form {
     display: flex;
-    gap: 15px;
+    gap: 10px;
 }
 
-.comment-section input {
+.comment-section input,
+.input-group input {
     flex: 1;
     padding: 14px;
-    border-radius: 8px;
     border: 1px solid #ddd;
-    font-size: 15px;
-    color: #555;
-}
-
-.comment-section button {
-    padding: 14px 20px;
-    background-color: #27ae60;
-    color: white;
-    border: none;
     border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.comment-section button:hover {
-    background-color: #2ecc71;
+    font-size: 15px;
+    color: #333;
+    background-color: #fff;
 }
 
 .comment-section ul {
@@ -482,118 +551,60 @@ body {
     padding: 0;
 }
 
-.comment-section li {
-    font-size: 15px;
-    padding: 12px 0;
-    border-bottom: 1px solid #f1f1f1;
-    background-color: #f9f9f9;
-}
-
-/* Additional Enhancements */
-.card-header {
-    background-color: #f9fafc;
-    border-bottom: 1px solid #e2e6ea;
-}
-
-.badge-group {
-    font-size: 12px;
-    display: flex;
-    gap: 8px;
-}
-
-.badge-group span {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 14px;
-}
-
-.badge-group .badge-success {
-    background-color: #2ecc71;
-    color: white;
-}
-
-.badge-group .badge-danger {
-    background-color: #e74c3c;
-    color: white;
-}
-
-.badge-group .badge-warning {
-    background-color: #f39c12;
-    color: white;
-}
-
-.attachment {
-    border: 1px solid #ddd;
-    padding: 12px;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    margin-top: 20px;
-}
-
 .comment-item {
     background-color: #f9f9f9;
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 15px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .comment-item strong {
     color: #2980b9;
 }
 
-/* Input Group for Comment Section */
-.input-group {
+/* ===================================
+   BADGES & LABELS
+=================================== */
+.badge-group {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    font-size: 13px;
 }
 
-.input-group input {
-    flex: 1;
-    padding: 14px;
+.badge-group span {
+    padding: 6px 14px;
+    border-radius: 20px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #2ecc71;
+}
+
+.badge-danger {
+    background-color: #e74c3c;
+}
+
+.badge-warning {
+    background-color: #f39c12;
+}
+
+/* ===================================
+   ATTACHMENTS
+=================================== */
+.attachment {
+    margin-top: 20px;
+    padding: 12px;
+    background-color: #f4f6f8;
+    border: 1px solid #ddd;
     border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-    color: #333;
 }
 
-.input-group button {
-    padding: 14px 20px;
-    background-color: #2980b9;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.input-group button:hover {
-    background-color: #3498db;
-}
-
-/* Tooltip */
-.tooltip {
-    position: absolute;
-    background-color: #333;
-    color: white;
-    border-radius: 4px;
-    padding: 5px;
-    font-size: 12px;
-    z-index: 1000;
-}
-
-/* Employee Photo */
-.employee-photo {
-    max-width: 180px;
-    max-height: 180px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 3px solid #ddd;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Modal Styles */
+/* ===================================
+   MODAL
+=================================== */
 .modal-content {
     border-radius: 10px;
     border: 2px solid #2980b9;
@@ -613,45 +624,53 @@ body {
     border-top: 1px solid #ddd;
 }
 
-/* Button Styles for Admin */
-.validate-btn {
-    padding: 8px 18px;
-    border-radius: 8px;
+/* ===================================
+   PHOTOS & COMPARISONS
+=================================== */
+.employee-photo {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-    border: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
-.validate-btn.approve {
-    background-color: #2ecc71;
+.photo-comparison {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+/* ===================================
+   TOOLTIP
+=================================== */
+.tooltip {
+    position: absolute;
+    background-color: #333;
     color: white;
-}
-
-.validate-btn.reject {
-    background-color: #e74c3c;
-    color: white;
-}
-
-.validate-btn:hover {
-    opacity: 0.9;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 1000;
 }
 </style>
 
 
 <!-- sosial media -->
-<div class="container py-5">
+<!-- <div class="container py-5">
     <div class="row">
-        <div class="col-md-9">
+        <div class="col-md-9"> -->
 
-    <!-- Layanan Unggulan untuk Pegawai -->
+    <!-- Layanan Unggulan untuk Pegawai
     @if(Auth::user()->role == 'user')
     <div class="row mb-5">
         <div class="col-12">
             <h3 class="mb-4 text-center">Layanan Unggulan untuk Pegawai</h3>
         </div>
 
-        <!-- Manajemen Data Pegawai -->
-        <div class="col-md-6 mb-4">
+        Manajemen Data Pegawai -->
+        <!-- <div class="col-md-6 mb-4">
             <div class="card text-center border-0 shadow-sm">
                 <i class="bi bi-file-earmark-person p-3" style="font-size: 3rem; color: #17a2b8;"></i>
                 <div class="card-body">
@@ -660,10 +679,10 @@ body {
                     <a href="/data-pegawai" class="btn btn-primary btn-sm">Lihat Data</a>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Penyusunan Rencana -->
-        <div class="col-md-6 mb-4">
+        <!-- <div class="col-md-6 mb-4">
             <div class="card text-center border-0 shadow-sm">
                 <i class="bi bi-card-checklist p-3" style="font-size: 3rem; color: #6610f2;"></i>
                 <div class="card-body">
@@ -672,10 +691,10 @@ body {
                     <a href="{{ route('plans.index') }}" class="btn btn-primary btn-sm">Baca Selengkapnya</a>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Kantor Telkom Property dan Performance Tracking -->
-        <div class="row mb-5">
+        <!-- <div class="row mb-5">
             <div class="col-md-6 mb-4">
                 <div class="card text-center border-0 shadow-sm">
                     <i class="bi bi-building p-3" style="font-size: 3rem; color: #ffc107;"></i>
@@ -699,17 +718,17 @@ body {
             </div>
         </div>
     </div>
-    @endif
+    @endif -->
 
     <!-- Layanan Unggulan untuk Admin -->
-    @if(Auth::user()->role == 'admin')
+    <!-- @if(Auth::user()->role == 'admin')
     <div class="row mb-5">
         <div class="col-12">
             <h3 class="mb-4 text-center">Layanan Unggulan untuk Admin</h3>
-        </div>
+        </div> -->
 
         <!-- User Management -->
-        <div class="col-md-4 mb-4">
+        <!-- <div class="col-md-4 mb-4">
             <div class="card text-center border-0 shadow-sm">
                 <i class="bi bi-person-check p-3" style="font-size: 3rem; color: #17a2b8;"></i>
                 <div class="card-body">
@@ -718,10 +737,10 @@ body {
                     <a href="register" class="btn btn-primary btn-sm">Kelola Pengguna</a>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Performance Tracking for Admin -->
-        <div class="col-md-4 mb-4">
+        <!-- <div class="col-md-4 mb-4">
             <div class="card text-center border-0 shadow-sm">
                 <i class="bi bi-bar-chart-line p-3" style="font-size: 3rem; color: #28a745;"></i>
                 <div class="card-body">
@@ -730,10 +749,10 @@ body {
                     <a href="{{ route('admin.performance.index') }}" class="btn btn-success btn-sm">Lihat Laporan</a>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Kantor Telkom Property -->
-        <div class="col-md-4 mb-4">
+        <!-- <div class="col-md-4 mb-4">
             <div class="card text-center border-0 shadow-sm">
                 <i class="bi bi-building p-3" style="font-size: 3rem; color: #ffc107;"></i>
                 <div class="card-body">
@@ -744,28 +763,28 @@ body {
             </div>
         </div>
     </div>
-    @endif
+    @endif -->
 
 
         <!-- Data Pegawai Fitur Tambahan -->
-    <div class="row mt-5">
+    <!-- <div class="row mt-5">
         <div class="col-12">
 
 
 <div class="container py-5">
-    <div class="row justify-content-center">
+    <div class="row justify-content-center"> -->
 <!-- Informasi Telkom Property -->
-<div class="container py-5">
+<!-- <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-10">
+        <div class="col-md-10"> -->
             <!-- Heading Section -->
-            <h2 class="text-center mb-4 font-weight-bold animate-on-scroll">Informasi Telkom Property</h2>
+            <!-- <h2 class="text-center mb-4 font-weight-bold animate-on-scroll">Informasi Telkom Property</h2>
             <p class="text-center text-muted animate-on-scroll">
                 <strong>Telkom Property</strong> adalah unit strategis dari PT Telkom Indonesia yang berfokus pada pengelolaan, pengembangan, dan optimalisasi properti perusahaan. Kami memiliki pengalaman bertahun-tahun untuk menyediakan solusi properti terbaik untuk mendukung bisnis Anda, mulai dari manajemen aset hingga pengembangan infrastruktur modern dan ramah lingkungan.
-            </p>
+            </p> -->
 
             <!-- Features Section -->
-            <div class="mt-5">
+            <!-- <div class="mt-5">
                 <h4 class="text-center mb-4 font-weight-bold animate-on-scroll">Fitur Utama Telkom Property</h4>
                 <ul class="list-group list-group-flush animate-on-scroll">
                     <li class="list-group-item">
@@ -790,10 +809,10 @@ body {
                         <strong>Layanan Custom:</strong> Paket layanan yang dapat disesuaikan untuk memenuhi kebutuhan unik klien kami.
                     </li>
                 </ul>
-            </div>
+            </div> -->
 
             <!-- Why Choose Us Section -->
-            <div class="mt-5">
+            <!-- <div class="mt-5">
                 <h4 class="text-center mb-4 font-weight-bold animate-on-scroll">Kenapa Memilih Telkom Property?</h4>
                 <div class="row text-center">
                     <div class="col-md-3 animate-on-scroll">
@@ -813,10 +832,10 @@ body {
                         <p><strong>Keberlanjutan</strong><br>Komitmen pada pengelolaan ramah lingkungan.</p>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Additional Benefits -->
-            <div class="mt-5">
+            <!-- <div class="mt-5">
                 <h4 class="text-center mb-4 font-weight-bold animate-on-scroll">Keunggulan Lainnya</h4>
                 <ul class="list-group list-group-flush animate-on-scroll">
                     <li class="list-group-item">
@@ -835,10 +854,10 @@ body {
                         <strong>Penyewaan Fleksibel:</strong> Kami menawarkan pilihan penyewaan jangka panjang dan jangka pendek untuk memenuhi kebutuhan Anda.
                     </li>
                 </ul>
-            </div>
+            </div> -->
 
             <!-- Contact Section -->
-            <div class="mt-5">
+            <!-- <div class="mt-5">
                 <h4 class="text-center mb-4 font-weight-bold animate-on-scroll">Hubungi Kami</h4>
                 <p class="text-center animate-on-scroll">
                     Dapatkan informasi lebih lanjut dan diskusikan kebutuhan Anda:
@@ -847,15 +866,15 @@ body {
                     <strong>Telepon:</strong> (021) 1234 5678<br>
                     <strong>Website:</strong> <a href="https://telkomproperty.co.id" target="_blank">www.telkomproperty.co.id</a>
                 </p>
-            </div>
+            </div> -->
 
             <!-- Location Section -->
-            <div class="mt-5">
+            <!-- <div class="mt-5">
                 <h4 class="text-center mb-4 font-weight-bold animate-on-scroll">Lokasi Kami</h4>
                 <p class="text-center text-muted animate-on-scroll">Kantor Pusat: Jl. Jendral Gatot Subroto No. 52, Jakarta Selatan, Indonesia.</p>
-                <div id="map" style="height: 400px; border-radius: 10px; overflow: hidden;" class="animate-on-scroll">
+                <div id="map" style="height: 400px; border-radius: 10px; overflow: hidden;" class="animate-on-scroll"> -->
                     <!-- Integrate Google Maps -->
-                    <iframe 
+                    <!-- <iframe 
                         src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1980.6922719579117!2d106.8189658!3d-6.2157426!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3e431d07dbd%3A0x57b218aef1c89614!2sTelkom%20Indonesia!5e0!3m2!1sen!2sid!4v1610635732436!5m2!1sen!2sid" 
                         width="100%" 
                         height="400" 
@@ -864,10 +883,10 @@ body {
                         loading="lazy">
                     </iframe>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Contact Form Section -->
-            <div class="mt-5">
+            <!-- <div class="mt-5">
                 <h4 class="text-center mb-4 font-weight-bold animate-on-scroll">Ajukan Pertanyaan atau Permintaan Informasi</h4>
                 <form class="animate-on-scroll">
                     <div class="form-group">
@@ -887,10 +906,10 @@ body {
             </div>
         </div>
     </div>
-</div>
+</div> -->
 
 <!-- Animasi Scroll -->
-<script>
+<!-- <script>
     document.addEventListener("DOMContentLoaded", function () {
         const scrollElements = document.querySelectorAll(".animate-on-scroll");
 
@@ -913,10 +932,10 @@ body {
         window.addEventListener("scroll", displayScrollElements);
         displayScrollElements();
     });
-</script>
+</script> -->
 
 <!-- Styling -->
-<style>
+<!-- <style>
     .animate-on-scroll {
         opacity: 0;
         transform: translateY(50px);
@@ -927,7 +946,7 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
-</style>
+</style> -->
 
 <!-- Social Media Links -->
 <div class="container mt-5">

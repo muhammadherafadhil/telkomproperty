@@ -45,17 +45,20 @@ class HistoryLogController extends Controller
         // Ambil foto karyawan dan hobi untuk setiap log
         foreach ($logs as $log) {
             $dataPegawai = DataPegawai::find($log->data_pegawai_id);
-            $log->employee_photo = $dataPegawai ? $dataPegawai->photo : null; // Ambil foto karyawan
+            $log->employee_photo = $dataPegawai ? $dataPegawai->photo : null;
 
             // Ambil hobi terkait
-            $hobi = Hobi::find($log->hobi_id); // Pastikan ada kolom hobi_id di tabel history_logs
-            $log->hobi = $hobi ? $hobi->name : null; // Ambil nama hobi
+            $hobi = Hobi::find($log->hobi_id);
+            $log->hobi = $hobi ? $hobi->name : null;
 
-            // Ambil lampiran jika ada
-            $log->lampiran = $log->lampiran ? Storage::url($log->lampiran) : null; // Ambil URL lampiran
+            // Ambil lampiran
+            $log->lampiran = $log->lampiran ? Storage::url($log->lampiran) : null;
+
+            // Hilangkan nama deskripsi dari view
+            unset($log->name);
         }
 
-        return view('beranda', compact('logs', 'recentProfilePhoto', 'user')); // Mengirimkan log dan foto profil terbaru ke halaman beranda
+        return view('beranda', compact('logs', 'recentProfilePhoto', 'user'));
     }
 
     /**
@@ -76,35 +79,36 @@ class HistoryLogController extends Controller
             return redirect()->back()->with('error', 'Data pegawai tidak ditemukan');
         }
 
-        // Handle foto karyawan atau file lainnya
+        // Handle file lampiran
         $attachedFiles = [];
         if ($request->hasFile('lampiran')) {
             $lampiran = $request->file('lampiran');
             $fileName = Str::random(40) . '.' . $lampiran->getClientOriginalExtension();
-            $path = $lampiran->storeAs('public/hobi', $fileName); // Menyimpan file di folder 'public/hobi'
-
-            // Dapatkan URL file untuk ditampilkan
+            $path = $lampiran->storeAs('public/hobi', $fileName);
             $attachedFiles['lampiran'] = Storage::url($path);
         }
 
         $changes = [];
         foreach ($oldData as $key => $value) {
             if (isset($newData[$key]) && $value != $newData[$key]) {
+                // Skip updated_at field
+                if ($key === 'updated_at') {
+                    continue;
+                }
                 $changes[] = "$key berubah dari $value menjadi {$newData[$key]}";
             }
         }
-        $changeDescription = implode(', ', $changes);
 
         HistoryLog::create([
-            'pelatihan_id' => $request->pelatihan_id ?? null, // ID Pelatihan jika ada
+            'pelatihan_id' => $request->pelatihan_id ?? null,
             'data_pegawai_id' => $dataPegawaiId,
             'action' => $action,
             'old_data' => json_encode($oldData),
             'new_data' => json_encode($newData),
-            'name' => $changeDescription,
-            'user_id' => auth()->user()->id, // Menggunakan ID pengguna yang sedang login
-            'lampiran' => $attachedFiles['lampiran'] ?? null, // Menyimpan file lampiran jika ada
-            'hobi_id' => $request->hobi_id ?? null, // Menyimpan ID hobi jika ada
+            'name' => implode(', ', $changes),
+            'user_id' => auth()->user()->id,
+            'lampiran' => $attachedFiles['lampiran'] ?? null,
+            'hobi_id' => $request->hobi_id ?? null,
         ]);
     }
 
@@ -128,7 +132,11 @@ class HistoryLogController extends Controller
         $changedData = [];
         foreach ($oldData as $key => $value) {
             if (isset($newData[$key]) && $value != $newData[$key]) {
-                $changedData[$key] = ['old' => $value, 'new' => $newData[$key]]; 
+                // Skip updated_at field
+                if ($key === 'updated_at') {
+                    continue;
+                }
+                $changedData[$key] = ['old' => $value, 'new' => $newData[$key]];
             }
         }
 
@@ -150,11 +158,15 @@ class HistoryLogController extends Controller
      */
     public function showHistoryLogs()
     {
-        // Mengambil logs dengan paginasi (Anda dapat menambahkan filter atau hubungan yang diperlukan)
-        $logs = HistoryLog::with('dataPegawai', 'likes', 'comments', 'hobi') // Pastikan memuat hubungan seperti dataPegawai, likes, comments
+        $logs = HistoryLog::with('dataPegawai', 'likes', 'comments', 'hobi')
             ->orderBy('created_at', 'desc')
-            ->paginate(10); // Tentukan jumlah item per halaman sesuai kebutuhan
-        
+            ->paginate(10);
+
+        // Hilangkan nama deskripsi dari tiap log
+        foreach ($logs as $log) {
+            unset($log->name);
+        }
+
         return view('history-log.index', compact('logs'));
     }
 
@@ -192,9 +204,9 @@ class HistoryLogController extends Controller
 
         $like = $historyLog->likes()->where('user_id', Auth::id())->first();
         if ($like) {
-            $like->delete(); // Jika sudah memberi like, hapus like
+            $like->delete();
         } else {
-            $historyLog->likes()->create(['user_id' => Auth::id()]); // Tambahkan like baru
+            $historyLog->likes()->create(['user_id' => Auth::id()]);
         }
 
         return back();
@@ -235,31 +247,25 @@ class HistoryLogController extends Controller
      */
     public function getMostRecentProfilePhoto()
     {
-        // Tentukan path direktori
-        $directory = storage_path('app/public/storage'); // Corrected to use storage_path
+        $directory = storage_path('app/public/storage');
 
-        // Pastikan direktori ada
         if (!File::exists($directory)) {
-            return 'storage/default-profile.jpg'; // Fallback jika direktori tidak ada
+            return 'storage/default-profile.jpg';
         }
 
-        // Ambil semua file dalam direktori
         $files = File::files($directory);
 
-        // Urutkan file berdasarkan waktu modifikasi terakhir, dari yang terbaru
-        usort($files, function($a, $b) {
+        usort($files, function ($a, $b) {
             return filemtime($b) - filemtime($a);
         });
 
-        // Ambil file terbaru (pertama dalam array yang sudah diurutkan)
         $mostRecentFile = $files[0] ?? null;
 
-        // Kembalikan path file relatif terhadap folder 'public'
         if ($mostRecentFile) {
             return 'storage/storage/' . basename($mostRecentFile);
         }
 
-        return 'storage/default-profile.jpg'; // Fallback jika tidak ada file
+        return 'storage/default-profile.jpg';
     }
 
     /**
@@ -269,8 +275,17 @@ class HistoryLogController extends Controller
      */
     public function showLogs()
     {
-        $logs = HistoryLog::paginate(10); // Ambil log biasa
-        $historyLogs = HistoryLog::where('hobi_id', '!=', null)->paginate(5); // Ambil log terkait hobi
+        $logs = HistoryLog::paginate(10);
+        $historyLogs = HistoryLog::where('hobi_id', '!=', null)->paginate(5);
+
+        // Hilangkan name dari logs
+        foreach ($logs as $log) {
+            unset($log->name);
+        }
+
+        foreach ($historyLogs as $log) {
+            unset($log->name);
+        }
 
         return view('your-view-name', compact('logs', 'historyLogs'));
     }
