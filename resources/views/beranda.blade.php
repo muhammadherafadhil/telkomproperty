@@ -47,17 +47,63 @@
                                     </div>";
                                 break;
 
-                            case (preg_match('/lamp_|avatar_karyawan/', $key) ? true : false):
-                                $oldFileName = $oldValue ? pathinfo($oldValue, PATHINFO_BASENAME) : 'Kosong';
-                                $newFileName = $newValue ? pathinfo($newValue, PATHINFO_BASENAME) : 'Kosong';
+                           case (preg_match('/^(lamp_|avatar_karyawan)/', $key) ? true : false):
+    $lampiranFields = [
+        'lamp_foto_karyawan'   => 'Foto Karyawan',
+        'lamp_ktp'             => 'KTP',
+        'lamp_sk_kartap'       => 'SK Kartap',
+        'lamp_sk_promut'       => 'SK Promosi/Mutasi',
+        'lamp_kontrak'         => 'Kontrak Kerja',
+        'lamp_buku_nikah'      => 'Buku Nikah',
+        'lamp_kk'              => 'Kartu Keluarga',
+        'lamp_ktp_pasangan'    => 'KTP Pasangan',
+        'lamp_akta_1'          => 'Akta Anak 1',
+        'lamp_akta_2'          => 'Akta Anak 2',
+        'lamp_akta_3'          => 'Akta Anak 3',
+        'lamp_bpjs_kes'        => 'BPJS Kesehatan',
+        'lamp_bpjs_tk'         => 'BPJS Ketenagakerjaan',
+        'lamp_kartu_npwp'      => 'Kartu NPWP',
+        'lamp_buku_rekening'   => 'Buku Rekening',
+        'avatar_karyawan'      => 'Foto Profil',
+    ];
 
-                                $oldBtn = $oldValue ? "<button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$oldValue}' data-file-name='{$oldFileName}'>Lihat Lampiran Sebelumnya</button>" : '';
-                                $newBtn = $newValue ? "<button class='btn btn-link btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$newValue}' data-file-name='{$newFileName}'>Lihat Lampiran Baru</button>" : '';
+    $oldFileName = $oldValue ? pathinfo($oldValue, PATHINFO_BASENAME) : null;
+    $newFileName = $newValue ? pathinfo($newValue, PATHINFO_BASENAME) : null;
 
-                                $changes[] = "<strong>Lampiran:</strong> 
-                                    <span class='old-file'>{$oldFileName}</span> → 
-                                    <span class='new-file'>{$newFileName}</span><br>{$oldBtn}" . ($oldBtn && $newBtn ? ' | ' : '') . "{$newBtn}";
-                                break;
+    // Lewati jika tidak ada file lama maupun baru
+    if (empty($oldFileName) && empty($newFileName)) break;
+
+    // Tombol preview
+    $oldBtn = $oldValue
+        ? "<button class='btn btn-outline-secondary btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$oldValue}' data-file-name='{$oldFileName}'>📄 Lampiran Sebelumnya</button>"
+        : '';
+
+    $newBtn = $newValue
+        ? "<button class='btn btn-outline-primary btn-sm' data-bs-toggle='modal' data-bs-target='#fileModal' data-file='/storage/{$newValue}' data-file-name='{$newFileName}'>🆕 Lampiran Baru</button>"
+        : '';
+
+    $buttonGroup = ($oldBtn || $newBtn)
+        ? "<div class='btn-group mt-2' role='group'>{$oldBtn}{$newBtn}</div>"
+        : '';
+
+    // Penentuan label
+    if (isset($lampiranFields[$key])) {
+        $label = "Lampiran {$lampiranFields[$key]}";
+    } else {
+        $label = match (true) {
+            str_contains($key, 'jabatan')      => 'Lampiran Jabatan',
+            str_contains($key, 'karyawan')     => 'Lampiran Karyawan',
+            str_contains($key, 'pendidikan')   => 'Lampiran Pendidikan',
+            str_contains($key, 'pelatihan')    => 'Lampiran Pelatihan',
+            str_contains($key, 'keterampilan') => 'Lampiran Keterampilan',
+            default                             => 'Lampiran',
+        };
+    }
+
+    $changes[] = "<strong>{$label}:</strong><br>{$buttonGroup}";
+    break;
+
+
 
                             default:
                                 $changes[] = "<strong>" . ucfirst(str_replace('_', ' ', $key)) . "</strong>: 
@@ -70,7 +116,6 @@
                 <div class="card mb-4 shadow-sm rounded-lg" data-log-id="{{ $log->id }}">
                     <div class="card-header d-flex justify-content-between align-items-center p-3">
                         <div class="d-flex align-items-center">
-                            <img src="{{ Storage::url($log->employee_photo) }}" alt="User Photo" class="rounded-circle" style="width: 50px; height: 50px;">
                             <div class="ms-3">
                                 <span class="fw-bold">{{ Auth::user()->name }}</span><br>
                                 <small class="text-muted">{{ \Carbon\Carbon::parse($log->created_at)->format('Y-m-d H:i:s') }}</small><br>
@@ -164,6 +209,10 @@
                     <!-- Akan diisi lewat JS -->
                 </div>
             </div>
+            <div class="modal-footer">
+                <!-- Tombol download file akan muncul otomatis via JS -->
+                <a href="#" id="downloadFileBtn" class="btn btn-primary" download target="_blank" style="display:none;">Download File</a>
+            </div>
         </div>
     </div>
 </div>
@@ -178,7 +227,6 @@
         </div>
     </div>
 </div>
-
 
 <!-- jQuery and Bootstrap JS (Bootstrap 5) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -195,21 +243,26 @@ $(document).ready(function() {
 
     // Handle file modal when clicking on attachment button
     $('#fileModal').on('show.bs.modal', function(event) {
-        var button = $(event.relatedTarget); // Button that triggered the modal
+        var button = $(event.relatedTarget);
         var fileUrl = button.data('file');
         var fileName = button.data('file-name');
-
         var fileExtension = fileName.split('.').pop().toLowerCase();
 
         var content = '';
+        var downloadBtn = $('#downloadFileBtn');
 
-        if (fileExtension === 'jpg' || fileExtension === 'png' || fileExtension === 'jpeg') {
+        if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
             content = '<img src="' + fileUrl + '" class="img-fluid" alt="Lampiran Gambar">';
+        } else if (fileExtension === 'pdf') {
+            content = '<iframe src="' + fileUrl + '" class="w-100" style="height:500px;" frameborder="0"></iframe>';
         } else {
-            content = '<a href="' + fileUrl + '" target="_blank" class="btn btn-primary btn-sm">Download ' + fileName + '</a>';
+            content = '<p>Tidak dapat menampilkan preview file ini.</p>';
         }
 
         $('#fileContent').html(content);
+        downloadBtn.attr('href', fileUrl);
+        downloadBtn.attr('download', fileName);
+        downloadBtn.show();
     });
 
     // Like functionality
@@ -234,7 +287,7 @@ $(document).ready(function() {
         });
     });
 
-    // Validate logs (for admin role)
+    // Validate logs (for admin)
     $(document).on('click', '.validate-btn', function() {
         var logId = $(this).data('id');
         var status = $(this).data('status');
@@ -253,7 +306,7 @@ $(document).ready(function() {
         });
     });
 
-    // Comment form submission
+    // Comment submission
     $(document).on('submit', '.comment-section form', function(e) {
         e.preventDefault();
         var form = $(this);
@@ -272,25 +325,53 @@ $(document).ready(function() {
             }
         });
     });
+
+    // Tambahan: Tombol default "📎 Lihat Lampiran" dibungkus rapi
+    $(document).on('click', '.attachment-button', function() {
+        var fileUrl = $(this).data('file');
+        var fileName = $(this).data('file-name');
+
+        $('#fileModal').modal('show');
+        $('#fileModal').on('shown.bs.modal', function () {
+            var ext = fileName.split('.').pop().toLowerCase();
+            let html = '';
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                html = `<img src="${fileUrl}" class="img-fluid" alt="${fileName}">`;
+            } else if (ext === 'pdf') {
+                html = `<iframe src="${fileUrl}" class="w-100" style="height:500px;" frameborder="0"></iframe>`;
+            } else {
+                html = `<p>Tidak dapat menampilkan preview file ini.</p>`;
+            }
+
+            $('#fileContent').html(html);
+            $('#downloadFileBtn').attr('href', fileUrl).attr('download', fileName).show();
+        });
+    });
 });
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Handle attachment modal
     const fileModal = document.getElementById('fileModal');
     fileModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
         const fileUrl = button.getAttribute('data-file');
         const fileName = button.getAttribute('data-file-name');
         const fileContent = document.getElementById('fileContent');
+        const downloadBtn = document.getElementById('downloadFileBtn');
 
         if (/\.(jpg|jpeg|png|gif)$/i.test(fileUrl)) {
             fileContent.innerHTML = `<img src="${fileUrl}" class="img-fluid" alt="${fileName}">`;
+        } else if (/\.pdf$/i.test(fileUrl)) {
+            fileContent.innerHTML = `<iframe src="${fileUrl}" class="w-100" style="height:500px;" frameborder="0"></iframe>`;
         } else {
-            fileContent.innerHTML = `<iframe src="${fileUrl}" class="w-100" style="height:500px;"></iframe>`;
+            fileContent.innerHTML = `<p>Tidak dapat menampilkan preview file ini.</p>`;
         }
+
+        downloadBtn.href = fileUrl;
+        downloadBtn.download = fileName;
+        downloadBtn.style.display = 'inline-block';
     });
 
-    // Handle click on photos for zoom
+    // Zoomable image view
     document.querySelectorAll('.clickable').forEach(img => {
         img.addEventListener('click', function () {
             const src = this.getAttribute('data-img');
@@ -301,8 +382,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
-
 </script>
+
+
 
 <style>
 /* ===================================
@@ -317,8 +399,9 @@ document.addEventListener('DOMContentLoaded', function () {
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f0f2f5;
-    color: #333;
-    line-height: 1.6;
+    color: #2c3e50;
+    line-height: 1.7;
+    font-size: 18px;
 }
 
 /* ===================================
@@ -326,11 +409,11 @@ body {
 =================================== */
 .container {
     max-width: 1200px;
-    margin: 40px auto;
-    padding: 40px;
-    background-color: #fff;
-    border-radius: 16px;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.05);
+    margin: 50px auto;
+    padding: 50px;
+    background-color: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 15px 60px rgba(0, 0, 0, 0.05);
 }
 
 /* ===================================
@@ -338,10 +421,10 @@ body {
 =================================== */
 .heading-primary {
     text-align: center;
-    font-size: 2.5rem;
-    font-weight: 700;
+    font-size: 3rem;
+    font-weight: 800;
     color: #2c3e50;
-    margin-bottom: 40px;
+    margin-bottom: 50px;
 }
 
 /* ===================================
@@ -350,7 +433,7 @@ body {
 .log-feed {
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 40px;
 }
 
 /* ===================================
@@ -358,15 +441,15 @@ body {
 =================================== */
 .log-card {
     background: #ffffff;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    padding: 35px;
+    border-radius: 16px;
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.07);
     transition: all 0.3s ease;
 }
 
 .log-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
 }
 
 /* ===================================
@@ -376,21 +459,21 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .log-info {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 20px;
 }
 
 .profile-photo {
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     object-fit: cover;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
 }
 
 .log-user-info {
@@ -399,19 +482,19 @@ body {
 }
 
 .log-user {
-    font-size: 18px;
-    font-weight: 600;
-    color: #2980b9;
+    font-size: 20px;
+    font-weight: 700;
+    color: #3498db;
 }
 
 .log-time {
-    font-size: 14px;
+    font-size: 16px;
     color: #7f8c8d;
 }
 
 .log-action {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
     color: #27ae60;
 }
 
@@ -419,26 +502,26 @@ body {
    LOG CONTENT
 =================================== */
 .log-body {
-    margin-top: 20px;
+    margin-top: 25px;
 }
 
 .log-description {
-    font-size: 16px;
+    font-size: 18px;
     color: #444;
 }
 
 .log-changes {
-    margin-top: 20px;
-    padding: 20px;
-    background-color: #f1f3f5;
-    border-radius: 10px;
+    margin-top: 25px;
+    padding: 25px;
+    background-color: #f4f6f8;
+    border-radius: 12px;
     list-style: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
 }
 
 .log-item {
-    margin-bottom: 12px;
-    font-size: 15px;
+    margin-bottom: 16px;
+    font-size: 17px;
     color: #2c3e50;
 }
 
@@ -458,16 +541,17 @@ body {
 .page-btn,
 .validate-btn,
 .comment-section button,
-.input-group button {
+.input-group button,
+.toggle-attachment-btn {
     display: inline-block;
-    padding: 12px 25px;
+    padding: 14px 28px;
     border: none;
-    border-radius: 6px;
-    font-size: 15px;
-    font-weight: 500;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
     text-align: center;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .like-btn {
@@ -482,7 +566,7 @@ body {
 .page-btn {
     background-color: #2980b9;
     color: #fff;
-    margin: 0 4px;
+    margin: 0 6px;
 }
 
 .page-btn.active {
@@ -505,12 +589,19 @@ body {
     color: white;
 }
 
+.toggle-attachment-btn {
+    background-color: #8e44ad;
+    color: white;
+    margin-bottom: 10px;
+}
+
 .btn:hover,
 .page-btn:hover,
 .like-btn:hover,
 .validate-btn:hover,
 .comment-section button:hover,
-.input-group button:hover {
+.input-group button:hover,
+.toggle-attachment-btn:hover {
     opacity: 0.9;
 }
 
@@ -518,7 +609,7 @@ body {
    PAGINATION
 =================================== */
 .pagination-container {
-    margin-top: 40px;
+    margin-top: 50px;
     text-align: center;
 }
 
@@ -526,37 +617,37 @@ body {
    COMMENT SECTION
 =================================== */
 .comment-section {
-    margin-top: 30px;
+    margin-top: 35px;
 }
 
 .comment-section form {
     display: flex;
-    gap: 10px;
+    gap: 15px;
 }
 
 .comment-section input,
 .input-group input {
     flex: 1;
-    padding: 14px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 15px;
+    padding: 16px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    font-size: 16px;
     color: #333;
     background-color: #fff;
 }
 
 .comment-section ul {
-    margin-top: 20px;
+    margin-top: 25px;
     list-style: none;
     padding: 0;
 }
 
 .comment-item {
     background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 18px;
+    border-radius: 10px;
+    margin-bottom: 18px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
 }
 
 .comment-item strong {
@@ -568,15 +659,15 @@ body {
 =================================== */
 .badge-group {
     display: flex;
-    gap: 8px;
-    font-size: 13px;
+    gap: 10px;
+    font-size: 14px;
 }
 
 .badge-group span {
-    padding: 6px 14px;
-    border-radius: 20px;
+    padding: 8px 18px;
+    border-radius: 25px;
     color: #fff;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .badge-success {
@@ -592,53 +683,70 @@ body {
 }
 
 /* ===================================
-   ATTACHMENTS
+   ATTACHMENTS with TOGGLE BUTTON
 =================================== */
 .attachment {
     margin-top: 20px;
-    padding: 12px;
+    padding: 0;
     background-color: #f4f6f8;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.4s ease;
+}
+
+.attachment-content {
+    padding: 20px;
+    display: none;
+}
+
+/* Active state */
+.attachment.open .attachment-content {
+    display: block;
 }
 
 /* ===================================
    MODAL
 =================================== */
 .modal-content {
-    border-radius: 10px;
+    border-radius: 12px;
     border: 2px solid #2980b9;
 }
 
 .modal-header {
     background-color: #2980b9;
     color: white;
-    font-weight: 600;
+    font-weight: 700;
+    padding: 20px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 25px;
+    font-size: 18px;
 }
 
 .modal-footer {
     border-top: 1px solid #ddd;
+    padding: 15px;
 }
 
 /* ===================================
    PHOTOS & COMPARISONS
 =================================== */
 .employee-photo {
-    width: 100px;
-    height: 100px;
+    width: 110px;
+    height: 110px;
     object-fit: cover;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
 }
 
 .photo-comparison {
     display: flex;
-    gap: 15px;
+    gap: 20px;
     align-items: center;
 }
 
@@ -649,10 +757,20 @@ body {
     position: absolute;
     background-color: #333;
     color: white;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
     z-index: 1000;
+}
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
 }
 </style>
 

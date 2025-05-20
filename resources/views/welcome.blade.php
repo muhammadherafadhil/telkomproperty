@@ -51,7 +51,7 @@ n      <style>
         }
 
         .sidebar-header img {
-            max-width: 200%;
+            max-width: 100%;
             height: auto;
             display: block;
             margin: 0 auto;
@@ -188,7 +188,7 @@ n      <style>
     <div class="sidebar" id="sidebar">
         <div>
             <div class="sidebar-header">
-                <img src="{{ asset('telprologo.png') }}" alt="TelPro Logo">
+                <img src="https://product.telkomproperty.co.id/assets/images/logoTelkom.png" alt="TelPro Logo">
             </div>
             <div class="sidebar-menu">
                 @if(Auth::user() && Auth::user()->role === 'admin')

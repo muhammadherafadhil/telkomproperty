@@ -9,78 +9,117 @@ class Kabupaten extends Model
 {
     use HasFactory;
 
-    // Nama tabel (optional, jika tidak sesuai dengan konvensi)
     protected $table = 'kabupatens';
+    protected $primaryKey = 'id_kab';
+    public $timestamps = true;
 
-    // Relasi dengan Kecamatan
+    protected $fillable = [
+        'id_kab',
+        'nama_kabupaten',
+        // Tambahkan kolom lain jika perlu
+    ];
+
+    /**
+     * Relasi ke kecamatan
+     */
     public function kecamatans()
     {
         return $this->hasMany(Kecamatan::class, 'id_kab', 'id_kab');
     }
 
-    // Event yang dipanggil setelah record diubah (create, update, delete)
+    /**
+     * Event hook untuk mencatat log
+     */
     protected static function booted()
     {
-        // Setelah data kabupaten dibuat
         static::created(function ($kabupaten) {
             $kabupaten->logHistory('create');
         });
 
-        // Setelah data kabupaten diperbarui
         static::updated(function ($kabupaten) {
             $kabupaten->logHistory('update');
         });
 
-        // Setelah data kabupaten dihapus
         static::deleted(function ($kabupaten) {
             $kabupaten->logHistory('delete');
         });
     }
 
-    // Fungsi untuk menyimpan log history ke tabel history_logs
+    /**
+     * Mencatat log perubahan
+     */
     public function logHistory($action)
     {
-        $changes = $this->getChanges(); // Mengambil data yang berubah
+        $changes = $this->getChanges();
+        $original = $this->getOriginal();
 
-        // Menyimpan log ke tabel history_logs
         $historyLog = new HistoryLog();
-        $historyLog->data_pegawai_id = $this->id; // ID kabupaten yang berubah
-        $historyLog->action = $action; // Jenis aksi (create, update, delete)
+        $historyLog->data_pegawai_id = $this->id_kab;
+        $historyLog->action = $action;
 
-        // Jika aksi adalah update, simpan data lama dan baru
-        if ($action === 'update') {
-            $historyLog->old_data = json_encode($this->getOriginal()); // Data lama
-            $historyLog->new_data = json_encode($changes); // Data baru
-        } elseif ($action === 'create') {
-            $historyLog->new_data = json_encode($changes); // Data baru (untuk create)
-        } elseif ($action === 'delete') {
-            $historyLog->old_data = json_encode($this->getOriginal()); // Data lama (untuk delete)
+        // Format readable untuk kabupaten
+        $displayKabupaten = 'Kabupaten ' . $this->nama_kabupaten;
+
+        if ($action === 'create') {
+            $historyLog->new_data = json_encode([
+                'nama_kabupaten' => $displayKabupaten,
+                'data' => $changes
+            ]);
         }
 
-        // Deskripsi perubahan yang lebih jelas
-        $historyLog->name = $this->generateChangeDescription($this->getOriginal(), $changes);
+        if ($action === 'update') {
+            $historyLog->old_data = json_encode([
+                'nama_kabupaten' => 'Kabupaten ' . $original['nama_kabupaten'],
+                'data' => $original
+            ]);
+            $historyLog->new_data = json_encode([
+                'nama_kabupaten' => $displayKabupaten,
+                'data' => $changes
+            ]);
+        }
 
-        // Menyimpan log perubahan ke dalam tabel history_logs
-        $historyLog->save(); // Simpan log ke database
+        if ($action === 'delete') {
+            $historyLog->old_data = json_encode([
+                'nama_kabupaten' => 'Kabupaten ' . $original['nama_kabupaten'],
+                'data' => $original
+            ]);
+        }
+
+        $historyLog->name = $this->generateChangeDescription($original, $changes, $displayKabupaten);
+        $historyLog->save();
     }
 
     /**
-     * Menyusun deskripsi perubahan yang dilakukan.
-     *
-     * @param  array  $oldData
-     * @param  array  $newData
-     * @return string
+     * Buat deskripsi perubahan yang mudah dibaca
      */
-    protected function generateChangeDescription($oldData, $newData)
+    protected function generateChangeDescription($oldData, $newData, $kabupatenName)
     {
-        $description = [];
+        $description = [$kabupatenName];
 
-        foreach ($oldData as $key => $value) {
-            if (array_key_exists($key, $newData) && $value != $newData[$key]) {
-                $description[] = ucfirst(str_replace('_', ' ', $key)) . ' berubah dari ' . $value . ' menjadi ' . $newData[$key];
+        foreach ($newData as $key => $newValue) {
+            $oldValue = $oldData[$key] ?? null;
+            if ($oldValue != $newValue) {
+                $label = ucfirst(str_replace('_', ' ', $key));
+                $description[] = "$label berubah dari '$oldValue' menjadi '$newValue'";
             }
         }
 
         return implode(', ', $description);
+    }
+
+    /**
+     * Accessor: nama kabupaten
+     */
+    public function getDisplayNameAttribute()
+    {
+        return $this->nama_kabupaten;
+    }
+
+    /**
+     * Tampilkan nama kabupaten saat model di-cast ke string
+     */
+    public function __toString()
+    {
+        return $this->nama_kabupaten;
     }
 }
