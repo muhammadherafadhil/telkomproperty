@@ -2,230 +2,220 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-image: url('');
-            background-size: cover;
-            background-position: center;
-            height: 100vh;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Arial', sans-serif;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Telkom Property</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f2f4f8;
+    }
 
-        .login-card {
-            width: 5600%;
-            max-width: 560px;
-            background: rgba(255, 255, 255, 0.4); /* Transparent background */
-            padding: 50px 35px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); /* Subtle shadow */
-            backdrop-filter: blur(1px); /* Soft blur effect */
-            color: #333;
-            overflow: hidden;
-        }
+    .container-fluid {
+      height: 100vh;
+    }
 
-        .login-card .logo {
-            display: block;
-            margin: 0 auto 20px;
-            width: 100%;
-            max-width: 120px;
-        }
+    .row.full-height {
+      height: 100%;
+    }
 
-        .login-card h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            text-align: center;
-            color: #333;
-            margin-bottom: 15px;
-        }
+    .left-col {
+      background: linear-gradient(to bottom right,rgb(10, 157, 255),rgb(10, 106, 250));
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 50px;
+      text-align: center;
+    }
 
-        .login-card p {
-            font-size: 1rem;
-            color: #555;
-            text-align: center;
-            margin-bottom: 25px;
-        }
+    .left-col img {
+      max-width: 180px;
+      margin-bottom: 30px;
+    }
 
-        .form-label {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-        }
+    .left-col h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
 
-        .form-control {
-            font-size: 1.1rem;
-            padding: 12px 16px;
-            border-radius: 8px;
-            border: 1px solid rgba(0, 0, 0, 0.3);
-            background: rgba(255, 255, 255, 0.8); /* More transparent background */
-            color: #333;
-        }
+    .left-col p {
+      font-size: 1.2rem;
+      max-width: 500px;
+    }
 
-        .form-control:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-            background: rgba(255, 255, 255, 1);
-        }
+    .right-col {
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+    .login-box {
+      width: 100%;
+      max-width: 600px;
+      padding: 50px;
+      background-color: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
 
-        .btn-primary {
-            font-size: 1.1rem;
-            font-weight: bold;
-            padding: 12px;
-            border-radius: 30px;
-            width: 100%;
-            background-color: #007bff;
-            border: none;
-        }
+    .login-box img.logo {
+      max-width: 160px;
+      margin-bottom: 30px;
+    }
 
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
+    .login-box h1 {
+      font-size: 2.3rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
 
-        .form-footer {
-            margin-top: 20px;
-            font-size: 1rem;
-            text-align: center;
-        }
+    .login-box p.subtext {
+      font-size: 1.1rem;
+      color: #555;
+      margin-bottom: 30px;
+    }
 
-        .form-footer a {
-            color: #007bff;
-            text-decoration: none;
-        }
+    .form-label {
+      font-weight: 600;
+    }
 
-        .form-footer a:hover {
-            text-decoration: underline;
-        }
+    .form-control {
+      font-size: 1.1rem;
+      padding: 14px;
+      border-radius: 10px;
+    }
 
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1055;
-        }
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      border-radius: 30px;
+      font-weight: bold;
+    }
 
-        @media (max-width: 576px) {
-            .login-card {
-                max-width: 90%;
-                padding: 20px 15px;
-            }
+    .form-footer {
+      margin-top: 20px;
+      font-size: 0.95rem;
+    }
 
-            .login-card h1 {
-                font-size: 1.5rem;
-            }
+    .form-footer a {
+      color: #007bff;
+      text-decoration: none;
+    }
 
-            .form-label,
-            .form-control {
-                font-size: 1rem;
-            }
+    .form-footer a:hover {
+      text-decoration: underline;
+    }
 
-            .btn-primary {
-                padding: 10px;
-            }
-        }
-    </style>
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1055;
+    }
+
+    @media (max-width: 768px) {
+      .left-col {
+        display: none;
+      }
+
+      .login-box {
+        padding: 30px 20px;
+        max-width: 95%;
+      }
+    }
+  </style>
 </head>
 
 <body>
-
-    <!-- Toast Container -->
-    <div class="toast-container">
-        <!-- Success Toast -->
-        @if (session('success'))
-        <div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    {{ session('success') }}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
+  <!-- Toasts -->
+  <div class="toast-container">
+    @if (session('success'))
+    <div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          {{ session('success') }}
         </div>
-        @endif
-
-        <!-- Error Toast -->
-        @if (session('error'))
-        <div class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    {{ session('error') }}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        </div>
-        @endif
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
     </div>
+    @endif
 
-    <div class="login-card">
-        <!-- Logo -->
-        <a href="#">
-            <img src="https://product.telkomproperty.co.id/assets/images/logoTelkom.png" alt="Logo" class="logo">
-        </a>
+    @if (session('error'))
+    <div class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          {{ session('error') }}
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+    @endif
+  </div>
 
-        <h1>Welcome Back</h1>
-        <p>Login to access your account</p>
+  <div class="container-fluid">
+    <div class="row full-height">
+      <!-- Left Section -->
+      <div class="col-md-6 left-col">
+        <img src="https://product.telkomproperty.co.id/assets/images/logoTelkom.png" alt="Telkom Logo" />
+        <h2>Selamat Datang Di Website data Pegawai TelkomProperty</h2>
+        <p>We deliver property solutions that are fast, secure, and connected. Log in to manage and monitor your digital infrastructure more effectively.</p>
+      </div>
 
-        <form action="{{ route('login') }}" method="POST">
+      <!-- Right Section -->
+      <div class="col-md-6 right-col">
+        <div class="login-box">
+          <img src="https://product.telkomproperty.co.id/assets/images/logoTelkom.png" alt="Telkom Logo" class="logo">
+          <h1>Login</h1>
+          <p class="subtext">Masukkan NIK dan Password</p>
+
+          <form action="{{ route('login') }}" method="POST">
             @csrf
-            <!-- NIK Input -->
-            <div class="form-group">
-                <label for="nik" class="form-label">NIK</label>
-                <input type="text" 
-                       id="nik" 
-                       name="nik" 
-                       placeholder="Enter your NIK" 
-                       class="form-control @error('nik') is-invalid @enderror" 
-                       required>
-                @error('nik')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+            <div class="mb-3 text-start">
+              <label for="nik" class="form-label">NIK</label>
+              <input type="text" id="nik" name="nik" class="form-control @error('nik') is-invalid @enderror" placeholder="Enter your NIK" required>
+              @error('nik')
+              <div class="invalid-feedback">{{ $message }}</div>
+              @enderror
             </div>
 
-            <!-- Password Input -->
-            <div class="form-group">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" 
-                       id="password" 
-                       name="password" 
-                       placeholder="Enter your password" 
-                       class="form-control @error('password') is-invalid @enderror" 
-                       required>
-                @error('password')
-                <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+            <div class="mb-3 text-start">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" id="password" name="password" class="form-control @error('password') is-invalid @enderror" placeholder="Enter your password" required>
+              @error('password')
+              <div class="invalid-feedback">{{ $message }}</div>
+              @enderror
             </div>
 
-            <!-- Submit Button -->
             <button type="submit" class="btn btn-primary">Sign In</button>
-        </form>
+
+            <div class="form-footer mt-3">
+              <span>Forgot password? <a href="#">Click here</a></span>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- JavaScript for Toast Notifications -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Bootstrap Toasts
-            const toastElements = document.querySelectorAll('.toast');
-            toastElements.forEach(toastElement => {
-                const toast = new bootstrap.Toast(toastElement);
-                toast.show();
-            });
-        });
-    </script>
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll(".toast").forEach(toast => new bootstrap.Toast(toast).show());
+    });
+  </script>
 </body>
 
 </html>

@@ -8,6 +8,10 @@ use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Hobi;
 use App\Models\Pelatihan;
+use App\Models\Provinsi;
+use App\Models\Kabupaten;
+use App\Models\Kecamatan;
+use App\Models\Desa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -69,7 +73,7 @@ class HistoryLogController extends Controller
      * @param  array  $oldData
      * @param  array  $newData
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\RedirectResponse|null
      */
     public function storeLog($dataPegawaiId, $action, $oldData, $newData, Request $request)
     {
@@ -153,6 +157,7 @@ class HistoryLogController extends Controller
 
     /**
      * Menampilkan seluruh riwayat log dengan komentar dan like.
+     * Melakukan konversi kode wilayah ke nama wilayah.
      *
      * @return \Illuminate\View\View
      */
@@ -162,8 +167,34 @@ class HistoryLogController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        // Hilangkan nama deskripsi dari tiap log
+        // Daftar field kode wilayah untuk konversi
+        $kodeWilayahFields = [
+            'desa_id' => Desa::class,
+            'kecamatan_id' => Kecamatan::class,
+            'kabupaten_id' => Kabupaten::class,
+            'provinsi_id' => Provinsi::class,
+        ];
+
         foreach ($logs as $log) {
+            // Decode JSON dulu
+            $oldData = json_decode($log->old_data, true) ?? [];
+            $newData = json_decode($log->new_data, true) ?? [];
+
+            // Konversi kode wilayah ke nama wilayah di oldData dan newData
+            foreach ($kodeWilayahFields as $field => $model) {
+                if (isset($oldData[$field])) {
+                    $oldData[$field] = optional($model::find($oldData[$field]))->nama ?? $oldData[$field];
+                }
+                if (isset($newData[$field])) {
+                    $newData[$field] = optional($model::find($newData[$field]))->nama ?? $newData[$field];
+                }
+            }
+
+            // Simpan kembali data yang sudah diubah ke property untuk view
+            $log->old_data_converted = $oldData;
+            $log->new_data_converted = $newData;
+
+            // Hilangkan nama deskripsi dari tiap log
             unset($log->name);
         }
 
